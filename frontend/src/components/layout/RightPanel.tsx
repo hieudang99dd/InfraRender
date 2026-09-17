@@ -1,0 +1,450 @@
+"use client";
+
+import {
+  Building2,
+  Camera,
+  Cloud,
+  CloudRain,
+  CloudSun,
+  Leaf,
+  Lightbulb,
+  Moon,
+  Palette,
+  Plus,
+  RotateCcw,
+  Route,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sun,
+  Sunset,
+  Tags,
+  X,
+} from "lucide-react";
+import { type ReactNode, useId, useRef, useState } from "react";
+
+import SettingSection from "@/components/render/SettingSection";
+import OptionChip from "@/components/ui/OptionChip";
+import {
+  DEFAULT_SETTINGS,
+  LIGHTING_VALUES,
+  MAX_CUSTOM_KEYWORDS,
+  MAX_CUSTOM_KEYWORD_LENGTH,
+  WEATHER_VALUES,
+  addCustomKeyword,
+  type RenderSettings,
+  updateRenderSetting,
+} from "@/lib/render-settings";
+
+import styles from "./RightPanel.module.css";
+
+type RightPanelProps = {
+  settings: RenderSettings;
+  onChange: (settings: RenderSettings) => void;
+  onGenerate: () => void;
+  isGenerating: boolean;
+  isRendering: boolean;
+  canGenerate: boolean;
+};
+
+type Option = { label: string; value: string; icon?: ReactNode };
+type ChoiceField = Exclude<
+  keyof RenderSettings,
+  "preserve_geometry" | "preserve_road_markings" | "creativity" | "custom_keywords"
+>;
+
+const DENSITY_OPTIONS: Option[] = [
+  { label: "Không có", value: "none" },
+  { label: "Thưa thớt", value: "sparse" },
+  { label: "Trung bình", value: "moderate" },
+  { label: "Dày đặc", value: "dense" },
+];
+
+const OPTIONS: Record<ChoiceField, Option[]> = {
+  weather: [
+    { label: "Nắng", value: WEATHER_VALUES.sunny, icon: <Sun size={14} /> },
+    { label: "Có mây", value: WEATHER_VALUES.cloudy, icon: <Cloud size={14} /> },
+    { label: "Mưa", value: WEATHER_VALUES.rain, icon: <CloudRain size={14} /> },
+    { label: "Hoàng hôn", value: WEATHER_VALUES.sunset, icon: <Sunset size={14} /> },
+    { label: "Ban đêm", value: WEATHER_VALUES.night, icon: <Moon size={14} /> },
+    { label: "Sương mù nhẹ", value: WEATHER_VALUES.mist, icon: <CloudSun size={14} /> },
+  ],
+  lighting: [
+    { label: "Ánh sáng ban ngày", value: LIGHTING_VALUES.natural },
+    { label: "Giờ vàng", value: LIGHTING_VALUES.golden },
+    { label: "Ánh sáng dịu", value: LIGHTING_VALUES.soft },
+    { label: "Điện ảnh", value: LIGHTING_VALUES.cinematic },
+    { label: "Chiếu sáng đô thị", value: LIGHTING_VALUES.night },
+  ],
+  vegetation: [
+    { label: "Cây nhiệt đới", value: "tropical vegetation" },
+    { label: "Cây đô thị & vỉa hè", value: "urban landscape planting" },
+    { label: "Cỏ & thảm phủ đất", value: "grass and ground-cover plants" },
+    { label: "Cây bụi & hoa cảnh", value: "flowering plants and shrubs" },
+  ],
+  vegetation_density: DENSITY_OPTIONS,
+  vehicles: [
+    { label: "Ô tô con", value: "cars" },
+    { label: "Xe máy", value: "motorcycles" },
+    { label: "Hỗn hợp", value: "mixed vehicle types" },
+    { label: "Xe tải hàng", value: "trucks" },
+  ],
+  vehicles_density: DENSITY_OPTIONS,
+  buildings: [
+    { label: "Hiện đại", value: "modern architecture" },
+    { label: "Thương mại", value: "commercial buildings" },
+    { label: "Khu dân cư", value: "residential buildings" },
+    { label: "Công nghiệp", value: "industrial buildings" },
+  ],
+  buildings_density: DENSITY_OPTIONS,
+  style: [
+    { label: "Chân thực", value: "photorealistic visualization" },
+    { label: "Phối cảnh kỹ thuật", value: "clean professional architectural presentation" },
+    { label: "Điện ảnh", value: "cinematic visualization with atmospheric color grading" },
+    { label: "Minh họa thiết kế", value: "refined architectural illustration with clear forms" },
+  ],
+  camera: [
+    { label: "Giữ góc ảnh gốc", value: "preserve the original camera perspective" },
+    {
+      label: "Góc nhìn trên cao",
+      value: "aerial drone perspective showing the complete site",
+    },
+    {
+      label: "Góc rộng kiến trúc",
+      value: "wide architectural perspective with straight verticals",
+    },
+    { label: "Góc người đi bộ", value: "human eye-level perspective with a natural focal length" },
+  ],
+  quality: [
+    { label: "Giữ nguyên gốc", value: "Original" },
+    { label: "2K", value: "2K" },
+    { label: "4K", value: "4K" },
+  ],
+  aspect_ratio: [
+    { label: "Giữ nguyên gốc", value: "Original" },
+    { label: "16:9 (Ngang)", value: "16:9" },
+    { label: "4:3 (Chuẩn)", value: "4:3" },
+  ],
+};
+
+function PreservationChoice({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean | null;
+  onChange: (value: boolean | null) => void;
+}) {
+  const id = useId();
+
+  return (
+    <div className={styles.preservation}>
+      <label htmlFor={id} className={styles.fieldLabel}>
+        {label}
+      </label>
+      <select
+        id={id}
+        className={styles.select}
+        data-empty={value === null}
+        value={value === null ? "" : String(value)}
+        onChange={(event) =>
+          onChange(event.target.value === "" ? null : event.target.value === "true")
+        }
+      >
+        <option value="">Chưa chọn</option>
+        <option value="true">Giữ nguyên</option>
+        <option value="false">Cho phép đổi</option>
+      </select>
+    </div>
+  );
+}
+
+export default function RightPanel({
+  settings,
+  onChange,
+  onGenerate,
+  isGenerating,
+  isRendering,
+  canGenerate,
+}: RightPanelProps) {
+  const id = useId();
+  const isBusy = isGenerating || isRendering;
+  const [keywordDraft, setKeywordDraft] = useState("");
+  const [keywordError, setKeywordError] = useState("");
+  const keywordInput = useRef<HTMLInputElement>(null);
+  const customKeywords = settings.custom_keywords ?? [];
+
+  function update<K extends keyof RenderSettings>(key: K, value: RenderSettings[K]) {
+    onChange(updateRenderSetting(settings, key, value));
+  }
+
+  function addKeyword() {
+    const result = addCustomKeyword(customKeywords, keywordDraft);
+    if (result.error) {
+      const messages = {
+        empty: "Nhập một từ khóa hoặc cụm từ trước khi thêm.",
+        duplicate: "Từ khóa này đã có trong danh sách.",
+        "too-long": `Mỗi từ khóa tối đa ${MAX_CUSTOM_KEYWORD_LENGTH} ký tự.`,
+        limit: `Bạn đã thêm ${MAX_CUSTOM_KEYWORDS} từ khóa. Xóa một từ khóa để thêm ý tưởng mới.`,
+      };
+      setKeywordError(messages[result.error]);
+      return;
+    }
+    update("custom_keywords", result.keywords);
+    setKeywordDraft("");
+    setKeywordError("");
+    keywordInput.current?.focus();
+  }
+
+  function choices(field: ChoiceField, label: string, threeColumns = false) {
+    return (
+      <div
+        role="group"
+        aria-label={label}
+        className={`${styles.options} ${threeColumns ? styles.threeColumns : ""}`}
+      >
+        {OPTIONS[field].map((option) => (
+          <OptionChip
+            key={option.value}
+            label={option.label}
+            icon={option.icon}
+            active={settings[field] === option.value}
+            onClick={() => update(field, settings[field] === option.value ? "" : option.value)}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <aside className={styles.panel} aria-label="Thông số phối cảnh">
+      <header className={styles.header}>
+        <div className={styles.heading}>
+          <SlidersHorizontal size={17} aria-hidden="true" />
+          <h2>Thông số phối cảnh</h2>
+        </div>
+        <button
+          type="button"
+          className={styles.reset}
+          onClick={() => {
+            onChange({ ...DEFAULT_SETTINGS, custom_keywords: [] });
+            setKeywordDraft("");
+            setKeywordError("");
+          }}
+          disabled={isBusy}
+          title="Đặt lại toàn bộ thông số về mặc định"
+        >
+          <RotateCcw size={13} aria-hidden="true" />
+          Đặt lại
+        </button>
+      </header>
+
+      <fieldset className={styles.settings} disabled={isBusy} aria-label="Thông số phối cảnh">
+        <p className={styles.selectionHint}>
+          Chọn thông số hoặc thêm từ khóa riêng. Nhấn lại một lựa chọn để bỏ chọn.
+        </p>
+        <SettingSection
+          title="Từ khóa bổ sung"
+          icon={<Tags size={17} />}
+          description="Thêm bất kỳ yêu cầu thiết kế, địa điểm, vật liệu hay bối cảnh bằng tiếng Việt hoặc ngôn ngữ bạn muốn."
+          defaultOpen
+        >
+          <label className={styles.fieldLabel} htmlFor={`${id}-keyword`}>
+            Từ khóa hoặc cụm từ kỹ thuật
+          </label>
+          <div className={styles.keywordEntry}>
+            <input
+              ref={keywordInput}
+              id={`${id}-keyword`}
+              className={styles.select}
+              type="text"
+              placeholder="Ví dụ: nút giao khác mức, dải phân cách cứng"
+              value={keywordDraft}
+              aria-invalid={Boolean(keywordError)}
+              aria-describedby={`${id}-keyword-help${keywordError ? ` ${id}-keyword-error` : ""}`}
+              onChange={(event) => {
+                setKeywordDraft(event.target.value);
+                setKeywordError("");
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  addKeyword();
+                }
+              }}
+            />
+            <button
+              type="button"
+              className={styles.keywordAdd}
+              onClick={addKeyword}
+              disabled={!keywordDraft.trim()}
+            >
+              <Plus size={15} aria-hidden="true" />
+              Thêm
+            </button>
+          </div>
+          <p id={`${id}-keyword-help`} className={styles.keywordHint}>
+            Nhấn Enter hoặc Thêm để lưu từng cụm từ. Tối đa {MAX_CUSTOM_KEYWORDS} từ khóa, mỗi từ
+            khóa {MAX_CUSTOM_KEYWORD_LENGTH} ký tự.
+          </p>
+          {keywordError && (
+            <p id={`${id}-keyword-error`} className={styles.keywordError} role="alert">
+              {keywordError}
+            </p>
+          )}
+          {customKeywords.length > 0 && (
+            <ul className={styles.keywordList} aria-label="Từ khóa đã thêm">
+              {customKeywords.map((keyword) => (
+                <li key={keyword}>
+                  <button
+                    type="button"
+                    className={styles.keywordChip}
+                    aria-label={`Xóa từ khóa: ${keyword}`}
+                    onClick={() => {
+                      update(
+                        "custom_keywords",
+                        customKeywords.filter((value) => value !== keyword),
+                      );
+                      setKeywordError("");
+                    }}
+                  >
+                    <span>{keyword}</span>
+                    <X size={13} aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className={styles.keywordCount} role="status" aria-live="polite" aria-atomic="true">
+            {customKeywords.length}/{MAX_CUSTOM_KEYWORDS} từ khóa đã thêm
+          </p>
+        </SettingSection>
+        <SettingSection title="Thời tiết & khí hậu" icon={<CloudSun size={17} />} defaultOpen>
+          {choices("weather", "Thời tiết & khí hậu", true)}
+        </SettingSection>
+        <SettingSection title="Ánh sáng" icon={<Lightbulb size={17} />} defaultOpen>
+          {choices("lighting", "Ánh sáng")}
+        </SettingSection>
+        <SettingSection title="Cây xanh & cảnh quan" icon={<Leaf size={17} />} defaultOpen>
+          <p className={styles.fieldLabel}>Loại cây xanh</p>
+          {choices("vegetation", "Loại cây xanh")}
+          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ cây xanh</p>
+          {choices("vegetation_density", "Mật độ cây xanh")}
+        </SettingSection>
+        <SettingSection title="Giao thông & phương tiện" icon={<Route size={17} />}>
+          <p className={styles.fieldLabel}>Loại phương tiện</p>
+          {choices("vehicles", "Loại phương tiện")}
+          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ giao thông</p>
+          {choices("vehicles_density", "Mật độ giao thông")}
+          <PreservationChoice
+            label="Vạch sơn mặt đường"
+            value={settings.preserve_road_markings}
+            onChange={(value) => update("preserve_road_markings", value)}
+          />
+        </SettingSection>
+        <SettingSection title="Công trình kiến trúc" icon={<Building2 size={17} />}>
+          <p className={styles.fieldLabel}>Loại công trình</p>
+          {choices("buildings", "Loại công trình")}
+          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ công trình</p>
+          {choices("buildings_density", "Mật độ công trình")}
+        </SettingSection>
+        <SettingSection title="Phong cách hình ảnh" icon={<Palette size={17} />}>
+          {choices("style", "Phong cách hình ảnh")}
+        </SettingSection>
+        <SettingSection title="Bảo toàn hình học & sáng tạo" icon={<ShieldCheck size={17} />}>
+          <PreservationChoice
+            label="Bảo toàn hình khối công trình"
+            value={settings.preserve_geometry}
+            onChange={(value) => update("preserve_geometry", value)}
+          />
+          <div className={styles.rangeLabel}>
+            <label htmlFor={`${id}-creativity`}>Mức độ diễn giải sáng tạo (%)</label>
+            <button
+              type="button"
+              className={styles.clear}
+              aria-label="Bỏ chọn mức độ diễn giải"
+              disabled={settings.creativity === null}
+              onClick={() => update("creativity", null)}
+            >
+              Bỏ chọn
+            </button>
+          </div>
+          <input
+            id={`${id}-creativity`}
+            className={styles.select}
+            type="number"
+            min={0}
+            max={100}
+            step={1}
+            placeholder="Chưa chọn"
+            value={settings.creativity ?? ""}
+            onChange={(event) => {
+              const value = event.target.valueAsNumber;
+              update(
+                "creativity",
+                Number.isFinite(value) ? Math.min(100, Math.max(0, Math.round(value))) : null,
+              );
+            }}
+          />
+          {settings.creativity !== null && (
+            <>
+              <input
+                className={styles.range}
+                type="range"
+                aria-label="Điều chỉnh mức độ diễn giải sáng tạo"
+                min={0}
+                max={100}
+                step={1}
+                value={settings.creativity}
+                onChange={(event) => update("creativity", Number(event.target.value))}
+              />
+              <div className={styles.rangeHints}>
+                <span>Bám sát ảnh gốc</span>
+                <span>Diễn giải sáng tạo</span>
+              </div>
+            </>
+          )}
+        </SettingSection>
+        <SettingSection title="Góc nhìn & góc máy" icon={<Camera size={17} />}>
+          <label className={styles.fieldLabel} htmlFor={`${id}-camera`}>
+            Góc máy mong muốn
+          </label>
+          <select
+            id={`${id}-camera`}
+            className={styles.select}
+            data-empty={!settings.camera}
+            value={settings.camera}
+            onChange={(event) => update("camera", event.target.value)}
+          >
+            <option value="">Chưa chọn</option>
+            {OPTIONS.camera.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </SettingSection>
+        <SettingSection
+          title="Thông số xuất hình"
+          icon={<SlidersHorizontal size={17} />}
+          description="Thông số độ phân giải và tỷ lệ được đưa vào chỉ dẫn phối cảnh."
+        >
+          <p className={styles.fieldLabel}>Độ phân giải</p>
+          {choices("quality", "Độ phân giải", true)}
+          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Tỷ lệ khung hình</p>
+          {choices("aspect_ratio", "Tỷ lệ khung hình", true)}
+        </SettingSection>
+      </fieldset>
+
+      <footer className={styles.footer}>
+        <p>
+          {isRendering
+            ? "Bạn có thể điều chỉnh thông số sau khi dựng xong."
+            : canGenerate
+              ? "Sẵn sàng. Chuyển sang Soạn chỉ dẫn để tạo và dựng phối cảnh."
+              : "Thêm ảnh hiện trạng để bắt đầu."}
+        </p>
+      </footer>
+    </aside>
+  );
+}

@@ -1,0 +1,85 @@
+# ============================================
+# InfraRenderAI
+# ============================================
+
+# -----------------------------
+# ENV / API KEYS / SECRETS
+# -----------------------------
+.env
+.env.*
+!.env.example
+
+backend/.env
+frontend/.env
+frontend/.env.local
+
+# -----------------------------
+# PYTHON / FASTAPI
+# -----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+.venv/
+venv/
+env/
+
+.pytest_cache/
+.mypy_cache/
+
+# -----------------------------
+# NODE / REACT
+# -----------------------------
+node_modules/
+frontend/node_modules/
+
+dist/
+frontend/dist/
+
+build/
+frontend/build/
+
+.next/
+
+# -----------------------------
+# LOG FILES
+# -----------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# -----------------------------
+# IDE
+# -----------------------------
+.vscode/
+.idea/
+
+# -----------------------------
+# WINDOWS / MAC
+# -----------------------------
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# -----------------------------
+# TEMP FILES
+# -----------------------------
+*.tmp
+*.temp
+*.bak
+*.swp
+
+# -----------------------------
+# GENERATED / RENDER OUTPUT
+# -----------------------------
+uploads/
+outputs/
+renders/
+generated/
+
+backend/uploads/
+backend/outputs/
+backend/renders/
+backend/generated/

@@ -1,0 +1,5 @@
+fastapi[standard]
+httpx
+python-multipart
+pillow
+python-dotenv

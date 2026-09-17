@@ -1,0 +1,116 @@
+export type RenderSettings = {
+  weather: string;
+  lighting: string;
+  vehicles: string;
+  vehicles_density: string;
+  vegetation: string;
+  vegetation_density: string;
+  buildings: string;
+  buildings_density: string;
+  style: string;
+  camera: string;
+  quality: string;
+  aspect_ratio: string;
+  preserve_geometry: boolean | null;
+  preserve_road_markings: boolean | null;
+  creativity: number | null;
+  custom_keywords: string[];
+};
+
+export const MAX_CUSTOM_KEYWORDS = 20;
+export const MAX_CUSTOM_KEYWORD_LENGTH = 120;
+
+export function normalizeCustomKeyword(value: string): string {
+  return value.normalize("NFC").trim().replace(/\s+/gu, " ");
+}
+
+export type AddCustomKeywordResult =
+  | { keywords: string[]; error?: never }
+  | { error: "empty" | "duplicate" | "too-long" | "limit"; keywords?: never };
+
+export function addCustomKeyword(
+  keywords: readonly string[],
+  value: string,
+): AddCustomKeywordResult {
+  const keyword = normalizeCustomKeyword(value);
+  if (!keyword) return { error: "empty" };
+  if ([...keyword].length > MAX_CUSTOM_KEYWORD_LENGTH) return { error: "too-long" };
+  if (
+    keywords.some((entry) => normalizeCustomKeyword(entry).toLowerCase() === keyword.toLowerCase())
+  ) {
+    return { error: "duplicate" };
+  }
+  if (keywords.length >= MAX_CUSTOM_KEYWORDS) return { error: "limit" };
+  return { keywords: [...keywords, keyword] };
+}
+
+export const WEATHER_VALUES = {
+  sunny: "sunny weather",
+  cloudy: "overcast weather",
+  rain: "rainy weather",
+  sunset: "sunset",
+  night: "nighttime",
+  mist: "light mist",
+};
+
+export const LIGHTING_VALUES = {
+  natural: "natural daylight",
+  golden: "warm golden-hour sunlight",
+  soft: "soft diffused lighting with gentle shadows",
+  cinematic: "cinematic lighting with controlled contrast",
+  night: "urban street lighting",
+};
+
+export const DEFAULT_SETTINGS: RenderSettings = {
+  weather: "",
+  lighting: "",
+  vehicles: "",
+  vehicles_density: "",
+  vegetation: "",
+  vegetation_density: "",
+  buildings: "",
+  buildings_density: "",
+  style: "",
+  camera: "",
+  quality: "",
+  aspect_ratio: "",
+  preserve_geometry: null,
+  preserve_road_markings: null,
+  creativity: null,
+  custom_keywords: [],
+};
+
+export function updateRenderSetting<K extends keyof RenderSettings>(
+  settings: RenderSettings,
+  key: K,
+  value: RenderSettings[K],
+): RenderSettings {
+  return { ...settings, [key]: value };
+}
+
+export function toPromptRequest(
+  settings: RenderSettings,
+  notes: string,
+): Partial<RenderSettings> & { notes: string } {
+  const selected = Object.fromEntries(
+    Object.entries(settings).filter(
+      ([key, value]) => key !== "custom_keywords" && value !== "" && value !== null,
+    ),
+  );
+
+  const seen = new Set<string>();
+  const keywords = (settings.custom_keywords ?? [])
+    .map(normalizeCustomKeyword)
+    .filter((keyword) => {
+      const key = keyword.toLowerCase();
+      if (!keyword || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+  return {
+    ...selected,
+    ...(keywords.length ? { custom_keywords: keywords } : {}),
+    notes: notes.trim(),
+  };
+}
