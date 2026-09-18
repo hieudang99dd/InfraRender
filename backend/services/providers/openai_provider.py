@@ -2,7 +2,6 @@
 import base64
 import binascii
 import json
-import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from time import monotonic
@@ -12,6 +11,7 @@ import httpx
 from fastapi import HTTPException
 from fastapi.concurrency import run_in_threadpool
 
+from services.config import env_or_file
 from services.image_upload import ImageMetadata, validate_image
 from services.providers.base import ImageProvider
 
@@ -122,9 +122,9 @@ class OpenAIImageProvider(ImageProvider):
 
     def _get_config(self) -> RenderConfig:
         return RenderConfig(
-            api_key=os.getenv("OPENAI_API_KEY", "").strip(),
-            model=os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-2").strip(),
-            base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").strip().rstrip("/"),
+            api_key=env_or_file("OPENAI_API_KEY"),
+            model=env_or_file("OPENAI_IMAGE_MODEL", "gpt-image-2"),
+            base_url=env_or_file("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/"),
         )
         
     def _status(self, config: RenderConfig, state: str, message: str, checked_at: str | None = None) -> dict:
