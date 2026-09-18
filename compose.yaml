@@ -12,7 +12,7 @@ services:
       OPENAI_VISION_MODEL: ${OPENAI_VISION_MODEL:-gpt-4o-mini}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       INFRARENDER_CORS_ORIGINS: ${INFRARENDER_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
-      INFRARENDER_PUBLIC_BASE_URL: ""
+      INFRARENDER_PUBLIC_BASE_URL: "https://${INFRARENDER_DOMAIN:-}"
     expose:
       - "8000"
     volumes:

@@ -109,20 +109,51 @@ jobs:
           format: table
 
       - name: Start Docker stack
-        run: docker compose -f compose.yaml -f compose.local.yaml up -d
-
-      - name: Smoke test frontend to backend proxy
         run: |
+          if ! docker compose -f compose.yaml -f compose.local.yaml up -d; then
+            docker compose -f compose.yaml -f compose.local.yaml ps
+            docker compose -f compose.yaml -f compose.local.yaml logs --no-color backend frontend
+            exit 1
+          fi
+
+      - name: Smoke test frontend and backend
+        run: |
+          echo "Testing backend health..."
+          backend_ok=0
           for attempt in {1..30}; do
-            if curl --fail --silent --show-error http://127.0.0.1:3000/api/health > /tmp/health.json; then
+            if curl --fail --silent --show-error http://127.0.0.1:8000/api/health > /tmp/health.json; then
               cat /tmp/health.json
-              exit 0
+              if jq -e '.status == "ok"' /tmp/health.json > /dev/null; then
+                backend_ok=1
+                break
+              fi
             fi
             sleep 2
           done
-          docker compose -f compose.yaml -f compose.local.yaml ps
-          docker compose -f compose.yaml -f compose.local.yaml logs
-          exit 1
+          
+          if [ "$backend_ok" -eq 0 ]; then
+            echo "Backend health check failed"
+            docker compose -f compose.yaml -f compose.local.yaml ps
+            docker compose -f compose.yaml -f compose.local.yaml logs --no-color backend
+            exit 1
+          fi
+          
+          echo "Testing frontend availability..."
+          frontend_ok=0
+          for attempt in {1..15}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/ > /dev/null; then
+              frontend_ok=1
+              break
+            fi
+            sleep 2
+          done
+          
+          if [ "$frontend_ok" -eq 0 ]; then
+            echo "Frontend check failed"
+            docker compose -f compose.yaml -f compose.local.yaml ps
+            docker compose -f compose.yaml -f compose.local.yaml logs --no-color frontend
+            exit 1
+          fi
 
       - name: Show container status
         if: always()
