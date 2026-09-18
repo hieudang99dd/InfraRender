@@ -17,7 +17,9 @@ $nextPath = Join-Path $frontendDirectory 'node_modules\next\dist\bin\next'
 $ownedProcesses = New-Object System.Collections.ArrayList
 $backendUrl = "http://127.0.0.1:$BackendPort"
 $frontendUrl = "http://127.0.0.1:$FrontendPort"
-$previousApiUrl = $env:INFRARENDER_API_URL
+$previousApiUrl = $env:NEXT_PUBLIC_INFRARENDER_API_URL
+$previousPagesMode = $env:INFRARENDER_PAGES
+$previousCorsOrigins = $env:INFRARENDER_CORS_ORIGINS
 $exitCode = 0
 
 function Test-ListeningPort([int] $Port) {
@@ -42,6 +44,14 @@ function Get-InfraRenderHealth([string] $Url) {
     return $null
 }
 
+function Test-FrontendPage([string] $Url) {
+    try {
+        $response = Invoke-WebRequest -Uri "$Url/" -UseBasicParsing -TimeoutSec 5
+        return $response.StatusCode -eq 200 -and $response.Content -match 'InfraRender'
+    }
+    catch { return $false }
+}
+
 function Start-OwnedService([string] $Name, [string] $FilePath, [string[]] $Arguments, [string] $Directory) {
     $stdoutPath = Join-Path $logDirectory "$Name-$runId.stdout.log"
     $stderrPath = Join-Path $logDirectory "$Name-$runId.stderr.log"
@@ -53,17 +63,22 @@ function Start-OwnedService([string] $Name, [string] $FilePath, [string[]] $Argu
     return $entry
 }
 
-function Wait-ServiceReady([string] $Name, [string] $Url, $Entry) {
+function Wait-ServiceReady([string] $Name, [string] $Url, $Entry, [switch] $Frontend) {
     $deadline = [DateTime]::UtcNow.AddSeconds(120)
     while ([DateTime]::UtcNow -lt $deadline) {
         if ($Entry -and $Entry.Process.HasExited) {
             throw "$Name stopped before it was ready. See $($Entry.Stderr) and $($Entry.Stdout)."
         }
-        $health = Get-InfraRenderHealth $Url
-        if ($health) { return $health }
+        if ($Frontend) {
+            if (Test-FrontendPage $Url) { return $true }
+        }
+        else {
+            $health = Get-InfraRenderHealth $Url
+            if ($health) { return $health }
+        }
         Start-Sleep -Milliseconds 300
     }
-    throw "$Name did not become ready at $Url/api/health within 120 seconds. See logs in $logDirectory."
+    throw "$Name did not become ready at $Url within 120 seconds. See logs in $logDirectory."
 }
 
 try {
@@ -93,6 +108,11 @@ try {
         [void] (New-Item -ItemType Directory -Path $logDirectory -Force)
         $runId = '{0}-{1}' -f (Get-Date -Format 'yyyyMMdd-HHmmss'), $PID
 
+        # Direct browser requests need the chosen frontend port in the backend CORS list.
+        $localOrigins = @("http://localhost:$FrontendPort", "http://127.0.0.1:$FrontendPort")
+        if ($previousCorsOrigins) { $localOrigins += $previousCorsOrigins.Split(',') }
+        $env:INFRARENDER_CORS_ORIGINS = ($localOrigins | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique) -join ','
+
         if (Test-ListeningPort $BackendPort) {
             $backendHealth = Get-InfraRenderHealth $backendUrl
             if (-not $backendHealth) { throw "Port $BackendPort is occupied by a service that is not a healthy InfraRender backend. Close that service or use -BackendPort <port>." }
@@ -105,24 +125,30 @@ try {
 
         # The launcher always connects its frontend to this local backend.
         # Restore the calling environment in finally after the child inherits it.
-        $env:INFRARENDER_API_URL = $backendUrl
+        $env:NEXT_PUBLIC_INFRARENDER_API_URL = $backendUrl
+        $env:INFRARENDER_PAGES = 'false'
         if (Test-ListeningPort $FrontendPort) {
-            $frontendHealth = Get-InfraRenderHealth $frontendUrl
-            if (-not $frontendHealth) { throw "Port $FrontendPort is occupied or its frontend cannot reach an InfraRender backend. Close that service or use -FrontendPort <port>." }
+            if (-not (Test-FrontendPage $frontendUrl)) { throw "Port $FrontendPort is occupied by a service that is not a ready InfraRender frontend. Close that service or use -FrontendPort <port>." }
             Write-Host "Using existing frontend at $frontendUrl (its existing API configuration is retained)."
         }
         else {
             $frontendEntry = Start-OwnedService 'frontend' $nodeCommand.Source @(('"' + $nextPath + '"'), 'dev', '--hostname', '0.0.0.0', '--port', "$FrontendPort") $frontendDirectory
-            [void] (Wait-ServiceReady 'Frontend / API proxy' $frontendUrl $frontendEntry)
+            [void] (Wait-ServiceReady 'Frontend' $frontendUrl $frontendEntry -Frontend)
         }
 
         Write-Host "Ready: http://localhost:$FrontendPort" -ForegroundColor Green
         Write-Host "Logs: $logDirectory"
         if ($backendHealth.PSObject.Properties['renderer'] -and -not $backendHealth.renderer.configured) {
-            Write-Host 'Prompt generation is ready. Image rendering requires OPENAI_API_KEY in backend/.env; restart the backend after configuring it.' -ForegroundColor Yellow
+            Write-Host 'Backend is online. AI prompt refinement and image rendering require OPENAI_API_KEY in backend/.env; restart the backend after configuring it.' -ForegroundColor Yellow
         }
         if ($SmokeTest) {
-            Write-Host 'Smoke test passed: backend and frontend API proxy are reachable.'
+            $origin = "http://localhost:$FrontendPort"
+            $corsResponse = Invoke-WebRequest -Uri "$backendUrl/api/health" -Method Options -UseBasicParsing -TimeoutSec 5 `
+                -Headers @{ Origin = $origin; 'Access-Control-Request-Method' = 'GET'; 'Access-Control-Request-Headers' = 'Authorization' }
+            if ($corsResponse.Headers['Access-Control-Allow-Origin'] -ne $origin) {
+                throw "Backend CORS does not allow $origin. Add this origin to backend/.env and restart the backend."
+            }
+            Write-Host 'Smoke test passed: frontend page, backend health and direct browser CORS are reachable.'
         }
         else {
             Write-Host 'Keep this terminal open. Press Ctrl+C to stop services started by this script.'
@@ -140,7 +166,9 @@ catch {
     Write-Host "InfraRender could not start: $($_.Exception.Message)" -ForegroundColor Red
 }
 finally {
-    $env:INFRARENDER_API_URL = $previousApiUrl
+    $env:NEXT_PUBLIC_INFRARENDER_API_URL = $previousApiUrl
+    $env:INFRARENDER_PAGES = $previousPagesMode
+    $env:INFRARENDER_CORS_ORIGINS = $previousCorsOrigins
     for ($index = $ownedProcesses.Count - 1; $index -ge 0; $index--) {
         $entry = $ownedProcesses[$index]
         if (-not $entry.Process.HasExited) {

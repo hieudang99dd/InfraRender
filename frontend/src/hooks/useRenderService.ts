@@ -43,10 +43,14 @@ export function useRenderService() {
     };
     const interval = window.setInterval(refreshLocal, 30_000);
     window.addEventListener("online", refreshLocal);
+    window.addEventListener("infrarender-rendered", refreshLocal);
+    window.addEventListener("infrarender-connection", refreshLocal);
     return () => {
       controller.abort();
       window.clearInterval(interval);
       window.removeEventListener("online", refreshLocal);
+      window.removeEventListener("infrarender-rendered", refreshLocal);
+      window.removeEventListener("infrarender-connection", refreshLocal);
     };
   }, [attempt]);
 

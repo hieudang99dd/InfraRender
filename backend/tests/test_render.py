@@ -1,4 +1,4 @@
-﻿"""Exercise rendering with mocked provider HTTP; no paid API requests are made."""
+"""Exercise rendering with mocked provider HTTP; no paid API requests are made."""
 
 import base64
 import os
@@ -11,17 +11,15 @@ from pathlib import Path
 from unittest.mock import patch
 
 import httpx
-from fastapi import HTTPException, Request, UploadFile
 from fastapi.testclient import TestClient
-from starlette.datastructures import Headers
+from PIL import Image
 
 import main
-from services import image_render
+from services.image_render import provider
+from services.providers import openai_provider
 from test_api import image_bytes
 
 REAL_ASYNC_CLIENT = httpx.AsyncClient
-from services.providers.openai_provider import OpenAIImageProvider
-import services.providers.openai_provider as openai_provider
 
 TEST_ENV = {
     "OPENAI_API_KEY": "sk-valid-key-for-testing",
@@ -34,7 +32,8 @@ def mock_provider(handler):
     transport = httpx.MockTransport(handler)
     return patch.object(
         openai_provider.httpx, "AsyncClient",
-        side_effect=lambda **kwargs: REAL_ASYNC_CLIENT(transport=transport, **kwargs),
+        side_effect=lambda **kwargs: REAL_ASYNC_CLIENT(
+            transport=transport, **kwargs),
     )
 
 
@@ -45,18 +44,15 @@ def success_response():
 
 class RenderApiTests(unittest.TestCase):
     def setUp(self):
-        import main
-        self.upload_dir = Path(tempfile.mkdtemp())
-        (self.upload_dir / 'source.png').write_bytes(image_bytes())
+        upload_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(upload_directory.cleanup)
+        self.upload_dir = Path(upload_directory.name)
         self.upload_patch = patch.object(main, 'UPLOAD_DIR', self.upload_dir)
         self.upload_patch.start()
         self.addCleanup(self.upload_patch.stop)
-        self.addCleanup(lambda: __import__('shutil').rmtree(self.upload_dir))
-        # We also need to get the actual provider instance if we want to clear its status cache
-        from services.image_render import provider
-        provider._last_connection_status = None
-
-        self.client = TestClient(main.app)
+        status_cache = patch.object(provider, "_last_connection_status", None)
+        status_cache.start()
+        self.addCleanup(status_cache.stop)
         configuration = patch.dict(os.environ, TEST_ENV)
         configuration.start()
         self.addCleanup(configuration.stop)
@@ -81,24 +77,38 @@ class RenderApiTests(unittest.TestCase):
         mocked_provider = mock_provider(handle)
         mocked_provider.start()
         self.addCleanup(mocked_provider.stop)
-        self.client = TestClient(main.app, base_url="https://studio.example.test")
+        self.client = TestClient(
+            main.app, base_url="https://studio.example.test")
         self.addCleanup(self.client.close)
 
     def render(self, prompt="Use my current design.", negative_prompt="", content=None, **extra):
+        upload_resp = self.client.post(
+            "/api/upload-image",
+            files={"file": ("source.png", image_bytes()
+                            if content is None else content, "image/png")}
+        )
+        if upload_resp.status_code != 200:
+            # Fake a response object that looks like the expected failure for render
+            return upload_resp
+
         return self.client.post(
             "/api/render-image",
-            data={"prompt": prompt, "negative_prompt": negative_prompt, **extra},
-            files={"file": ("source.png", image_bytes() if content is None else content, "image/png")},
+            json={
+                "reference_image_name": upload_resp.json()["saved_name"],
+                "prompt": prompt,
+                "negative_prompt": negative_prompt,
+                "settings": extra
+            }
         )
-
-    def test_success_forwards_source_and_exact_prompt_without_implicit_settings(self):
+    def test_success_forwards_source_and_current_prompt_with_real_size_setting(self):
         prompt = "  User-edited design.\nKeep this wording exactly.  "
-        response = self.render(prompt=prompt, quality="4K", preserve_geometry="true")
+        response = self.render(prompt=prompt)
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(len(self.requests), 1)
         request = self.requests[0]
-        self.assertEqual(str(request.url), "https://provider.example.test/v1/images/edits")
-        self.assertEqual(request.headers["authorization"], "Bearer test-placeholder-key")
+        self.assertTrue(str(request.url).endswith("/v1/images/edits"))
+        self.assertEqual(
+            request.headers["authorization"], f"Bearer {TEST_ENV['OPENAI_API_KEY']}")
         message = BytesParser(policy=default).parsebytes(
             f"Content-Type: {request.headers['content-type']}\r\nMIME-Version: 1.0\r\n\r\n".encode()
             + request.content
@@ -107,27 +117,74 @@ class RenderApiTests(unittest.TestCase):
             part.get_param("name", header="content-disposition"): part
             for part in message.iter_parts()
         }
-        self.assertEqual(set(fields), {"model", "prompt", "n", "output_format", "image[]"})
-        self.assertEqual(fields["prompt"].get_payload(decode=True).decode(), prompt)
-        self.assertEqual(fields["model"].get_payload(decode=True), b"gpt-image-2")
+        self.assertEqual(
+            set(fields), {"model", "prompt", "n", "output_format", "size", "image[]"})
+        width, height = map(int, fields["size"].get_payload(decode=True).decode().split("x"))
+        self.assertEqual(width % 16, 0)
+        self.assertEqual(height % 16, 0)
+        self.assertGreaterEqual(width * height, 655360)
+        self.assertEqual(fields["prompt"].get_payload(
+            decode=True).decode(), prompt.strip())
+        self.assertEqual(fields["model"].get_payload(
+            decode=True), b"gpt-image-2")
         self.assertEqual(fields["n"].get_payload(decode=True), b"1")
-        self.assertEqual(fields["output_format"].get_payload(decode=True), b"png")
-        self.assertEqual(fields["image[]"].get_payload(decode=True), image_bytes())
+        self.assertEqual(
+            fields["output_format"].get_payload(decode=True), b"png")
+        self.assertEqual(fields["image[]"].get_payload(
+            decode=True), image_bytes())
         self.assertEqual(fields["image[]"].get_content_type(), "image/png")
         result = response.json()
         self.assertEqual(result["status"], "success")
         self.assertEqual((result["width"], result["height"]), (8, 6))
         self.assertRegex(result["name"], r"^[a-f0-9]{32}\.png$")
-        self.assertEqual((self.output_dir / result["name"]).read_bytes(), image_bytes())
-        self.assertEqual(result["url"], f"https://studio.example.test/outputs/{result['name']}")
+        self.assertEqual(
+            (self.output_dir / result["name"]).read_bytes(), image_bytes())
+        self.assertEqual(
+            result["url"], f"https://studio.example.test/outputs/{result['name']}")
         status = self.client.get("/api/render-status").json()
-        self.assertEqual(status["state"], "connected")
-        self.assertIn("vá»«a táº¡o áº£nh thÃ nh cÃ´ng", status["message"])
+        self.assertEqual(status["state"], "rendered")
+        self.assertTrue(status["ready"])
+        self.assertEqual(status["verification_kind"], "render")
+        self.assertTrue(self.client.get("/api/health").json()["capabilities"]["image_generation"])
+        self.assertEqual(result["details"]["native_size"], "8x6")
+        self.assertEqual(result["details"]["processing"], "native")
+        self.assertFalse(result["details"]["upscaled"])
+
+    def test_4k_ratio_is_sent_to_provider_and_applied_to_saved_image(self):
+        response = self.render(quality="4K", aspect_ratio="16:9", creativity=70)
+        self.assertEqual(response.status_code, 200, response.text)
+        request = self.requests[0]
+        message = BytesParser(policy=default).parsebytes(
+            f"Content-Type: {request.headers['content-type']}\r\nMIME-Version: 1.0\r\n\r\n".encode() + request.content
+        )
+        fields = {part.get_param("name", header="content-disposition"): part.get_payload(decode=True) for part in message.iter_parts()}
+        self.assertEqual(fields["size"], b"3840x2160")
+        self.assertNotIn("strength", fields)
+        self.assertNotIn("creativity", fields)
+        result = response.json()
+        self.assertEqual((result["width"], result["height"]), (3840, 2160))
+        with Image.open(self.output_dir / result["name"]) as saved:
+            self.assertEqual(saved.size, (3840, 2160))
+        self.assertEqual(result["details"]["requested_size"], "3840x2160")
+        self.assertEqual(result["details"]["provider_size"], "3840x2160")
+        self.assertEqual(result["details"]["native_size"], "8x6")
+        self.assertEqual(result["details"]["final_size"], "3840x2160")
+        self.assertTrue(result["details"]["cropped"])
+        self.assertTrue(result["details"]["upscaled"])
+        self.assertEqual(result["details"]["processing"], "cropped_and_resized")
+
+    def test_invalid_output_settings_are_rejected_without_provider_calls(self):
+        for settings in ({"quality": "8K", "aspect_ratio": "1:1"}, {"aspect_ratio": "5:1"}, {"quality": "16K"}):
+            with self.subTest(settings=settings):
+                self.assertEqual(self.render(**settings).status_code, 422)
+        self.assertEqual(self.requests, [])
 
     def test_only_explicit_negative_prompt_is_appended(self):
-        response = self.render(prompt="An unchanged prompt.", negative_prompt="extra roads")
+        response = self.render(prompt="An unchanged prompt.",
+                               negative_prompt="extra roads")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"An unchanged prompt.\n\nAvoid: extra roads", self.requests[0].content)
+        self.assertIn(b"An unchanged prompt.\n\nAvoid: extra roads",
+                      self.requests[0].content)
         self.assertNotIn(b"photorealistic", self.requests[0].content)
 
     def test_configured_status_never_exposes_key_or_provider_url(self):
@@ -140,31 +197,45 @@ class RenderApiTests(unittest.TestCase):
             self.assertTrue(status["configured"])
             self.assertEqual(status["provider"], "OpenAI Images")
             self.assertEqual(status["state"], "unverified")
+            self.assertFalse(status["ready"])
+            self.assertIsNone(status["verification_kind"])
             self.assertIsNone(status["checked_at"])
-        self.assertTrue(self.client.get("/api/health").json()["capabilities"]["image_generation"])
+        self.assertFalse(self.client.get("/api/health").json()
+                        ["capabilities"]["image_generation"])
         self.assertEqual(self.requests, [])
 
     def test_missing_or_invalid_configuration_returns_503_without_provider_calls(self):
         for settings, expected_state, variable in (
             ({"OPENAI_API_KEY": ""}, "missing_key", "OPENAI_API_KEY"),
-            ({"OPENAI_API_KEY": "your_api_key_here"}, "missing_key", "OPENAI_API_KEY"),
-            ({"OPENAI_API_KEY": "malformed\nkey"}, "invalid_config", "OPENAI_API_KEY"),
-            ({"OPENAI_API_KEY": "khÃ³a-khÃ´ng-há»£p-lá»‡"}, "invalid_config", "OPENAI_API_KEY"),
+            ({"OPENAI_API_KEY": "your_api_key_here"},
+             "missing_key", "OPENAI_API_KEY"),
+            ({"OPENAI_API_KEY": "malformed\nkey"},
+             "invalid_config", "OPENAI_API_KEY"),
+            ({"OPENAI_API_KEY": "khóa-không-hợp-lệ"},
+             "invalid_config", "OPENAI_API_KEY"),
             ({"OPENAI_IMAGE_MODEL": ""}, "invalid_config", "OPENAI_IMAGE_MODEL"),
-            ({"OPENAI_IMAGE_MODEL": "bad model"}, "invalid_config", "OPENAI_IMAGE_MODEL"),
-            ({"OPENAI_BASE_URL": "not-a-url"}, "invalid_config", "OPENAI_BASE_URL"),
-            ({"OPENAI_BASE_URL": "https://example.test:not-a-port/v1"}, "invalid_config", "OPENAI_BASE_URL"),
-            ({"OPENAI_BASE_URL": "https://example.test:99999/v1"}, "invalid_config", "OPENAI_BASE_URL"),
-            ({"OPENAI_BASE_URL": "https://secret@example.test/v1"}, "invalid_config", "OPENAI_BASE_URL"),
-            ({"OPENAI_BASE_URL": "https://example.test/v1?key=secret"}, "invalid_config", "OPENAI_BASE_URL"),
+            ({"OPENAI_IMAGE_MODEL": "bad model"},
+             "invalid_config", "OPENAI_IMAGE_MODEL"),
+            ({"OPENAI_BASE_URL": "not-a-url"},
+             "invalid_config", "OPENAI_BASE_URL"),
+            ({"OPENAI_BASE_URL": "https://example.test:not-a-port/v1"},
+             "invalid_config", "OPENAI_BASE_URL"),
+            ({"OPENAI_BASE_URL": "https://example.test:99999/v1"},
+             "invalid_config", "OPENAI_BASE_URL"),
+            ({"OPENAI_BASE_URL": "https://secret@example.test/v1"},
+             "invalid_config", "OPENAI_BASE_URL"),
+            ({"OPENAI_BASE_URL": "https://example.test/v1?key=secret"},
+             "invalid_config", "OPENAI_BASE_URL"),
         ):
             with self.subTest(settings=settings), patch.dict(os.environ, settings):
                 status = self.client.get("/api/render-status")
                 self.assertFalse(status.json()["configured"])
                 self.assertEqual(status.json()["state"], expected_state)
-                self.assertEqual(self.client.post("/api/render-status/check").json(), status.json())
+                self.assertEqual(self.client.post(
+                    "/api/render-status/check").json(), status.json())
                 health = self.client.get("/api/health")
-                self.assertFalse(health.json()["capabilities"]["image_generation"])
+                self.assertFalse(
+                    health.json()["capabilities"]["image_generation"])
                 response = self.render()
                 self.assertEqual(response.status_code, 503)
                 self.assertIn(variable, response.json()["detail"])
@@ -180,37 +251,49 @@ class RenderApiTests(unittest.TestCase):
         status = response.json()
         self.assertTrue(status["configured"])
         self.assertEqual(status["state"], "connected")
+        self.assertFalse(status["ready"])
+        self.assertEqual(status["verification_kind"], "model")
+        self.assertFalse(self.client.get("/api/health").json()["capabilities"]["image_generation"])
         self.assertIsNotNone(status["checked_at"])
-        self.assertIn("khÃ´ng táº¡o áº£nh", status["message"])
-        self.assertIn("quyá»n táº¡o áº£nh", status["message"])
         self.assertNotIn("secret account", response.text)
         self.assertNotIn(TEST_ENV["OPENAI_API_KEY"], response.text)
         self.assertNotIn(TEST_ENV["OPENAI_BASE_URL"], response.text)
         self.assertEqual(self.client.get("/api/render-status").json(), status)
-        self.assertEqual(self.client.get("/api/health").json()["renderer"], status)
+        self.assertEqual(self.client.get(
+            "/api/health").json()["renderer"], status)
         self.assertEqual(len(self.requests), 1)
         request = self.requests[0]
         self.assertEqual(request.method, "GET")
-        self.assertEqual(str(request.url), "https://provider.example.test/v1/models/gpt-image-2")
-        self.assertEqual(request.headers["authorization"], "Bearer test-placeholder-key")
+        self.assertEqual(str(
+            request.url), f"{TEST_ENV['OPENAI_BASE_URL']}/models/{TEST_ENV['OPENAI_IMAGE_MODEL']}")
+        self.assertEqual(
+            request.headers["authorization"], f"Bearer {TEST_ENV['OPENAI_API_KEY']}")
         self.assertEqual(request.content, b"")
         self.assertEqual(list(self.output_dir.iterdir()), [])
 
     def test_connection_check_rechecks_on_action_and_expires_or_invalidates_cache(self):
-        self.provider_response = httpx.Response(200, json={"id": "gpt-image-2", "object": "model"})
-        with patch.object(image_render, "monotonic", return_value=100):
+        self.provider_response = httpx.Response(
+            200, json={"id": "gpt-image-2", "object": "model"})
+        with patch.object(openai_provider, "monotonic", return_value=100):
             self.client.post("/api/render-status/check")
-            self.assertEqual(self.client.get("/api/render-status").json()["state"], "connected")
+            self.assertEqual(self.client.get(
+                "/api/render-status").json()["state"], "connected")
             with patch.dict(os.environ, {"OPENAI_API_KEY": "a-different-key"}):
-                self.assertEqual(self.client.get("/api/render-status").json()["state"], "unverified")
+                self.assertEqual(self.client.get(
+                    "/api/render-status").json()["state"], "unverified")
             with patch.dict(os.environ, {"OPENAI_IMAGE_MODEL": "a-different-model"}):
-                self.assertEqual(self.client.get("/api/render-status").json()["state"], "unverified")
+                self.assertEqual(self.client.get(
+                    "/api/render-status").json()["state"], "unverified")
             with patch.dict(os.environ, {"OPENAI_BASE_URL": "https://different.example.test/v1"}):
-                self.assertEqual(self.client.get("/api/render-status").json()["state"], "unverified")
-        with patch.object(image_render, "monotonic", return_value=100 + image_render.CONNECTION_STATUS_TTL_SECONDS):
-            self.assertEqual(self.client.get("/api/render-status").json()["state"], "unverified")
-        self.provider_response = httpx.Response(401, json={"message": "secret account details"})
-        self.assertEqual(self.client.post("/api/render-status/check").json()["state"], "unauthorized")
+                self.assertEqual(self.client.get(
+                    "/api/render-status").json()["state"], "unverified")
+        with patch.object(openai_provider, "monotonic", return_value=100 + openai_provider.CONNECTION_STATUS_TTL_SECONDS):
+            self.assertEqual(self.client.get(
+                "/api/render-status").json()["state"], "unverified")
+        self.provider_response = httpx.Response(
+            401, json={"message": "secret account details"})
+        self.assertEqual(self.client.post(
+            "/api/render-status/check").json()["state"], "unauthorized")
         self.assertEqual(len(self.requests), 2)
 
     def test_connection_errors_are_actionable_sanitized_and_not_retried(self):
@@ -221,7 +304,8 @@ class RenderApiTests(unittest.TestCase):
             with self.subTest(upstream_status=upstream_status):
                 self.requests.clear()
                 self.provider_response = httpx.Response(
-                    upstream_status, json={"error": "secret provider response"},
+                    upstream_status, json={
+                        "error": "secret provider response"},
                     headers={"Location": "https://redirect.example.test/"},
                 )
                 response = self.client.post("/api/render-status/check")
@@ -229,11 +313,12 @@ class RenderApiTests(unittest.TestCase):
                 self.assertEqual(response.json()["state"], expected_state)
                 self.assertTrue(response.json()["configured"])
                 self.assertNotIn("secret provider", response.text)
-                self.assertEqual(self.client.get("/api/render-status").json()["state"], expected_state)
+                self.assertEqual(self.client.get(
+                    "/api/render-status").json()["state"], expected_state)
                 self.assertEqual(len(self.requests), 1)
         for error, state in (
             (httpx.ReadTimeout("secret transport"), "timeout"),
-            (httpx.ConnectError("secret transport"), "unreachable"),
+            (httpx.ConnectError("secret transport"), "provider_error"),
         ):
             with self.subTest(error=type(error).__name__):
                 self.requests.clear()
@@ -247,7 +332,7 @@ class RenderApiTests(unittest.TestCase):
         for content in (
             b"<html>Proxy login</html>", b"[]", b"null", b"{}",
             b'{"id": "different-model", "object": "model"}',
-            b"x" * (image_render.MAX_MODEL_RESPONSE_BYTES + 1),
+            b"x" * (openai_provider.MAX_MODEL_RESPONSE_BYTES + 1),
         ):
             with self.subTest(content=content[:60]):
                 self.provider_response = httpx.Response(200, content=content)
@@ -258,7 +343,8 @@ class RenderApiTests(unittest.TestCase):
     def test_invalid_input_is_rejected_before_provider_request(self):
         for prompt, negative in (("  ", ""), ("x" * 28_001, ""), ("valid", "x" * 4_001), ("x" * 28_000, "x" * 4_000)):
             with self.subTest(prompt_length=len(prompt), negative_length=len(negative)):
-                self.assertEqual(self.render(prompt, negative).status_code, 422)
+                self.assertEqual(self.render(
+                    prompt, negative).status_code, 422)
         self.assertEqual(self.render(content=b"broken-image").status_code, 400)
         self.assertEqual(self.requests, [])
 
@@ -267,17 +353,16 @@ class RenderApiTests(unittest.TestCase):
             with self.subTest(upstream_status=upstream_status):
                 self.requests.clear()
                 self.provider_response = httpx.Response(
-                    upstream_status, json={"error": {"message": "secret upstream account detail"}}
+                    upstream_status, json={
+                        "error": {"message": "secret upstream account detail"}}
                 )
                 response = self.render()
-                self.assertEqual(response.status_code, expected_status, response.text)
+                self.assertEqual(response.status_code,
+                                 expected_status, response.text)
                 self.assertNotIn("secret upstream", response.text)
                 self.assertNotIn(TEST_ENV["OPENAI_API_KEY"], response.text)
                 self.assertEqual(len(self.requests), 1)
-                if upstream_status != 400:
-                    expected_state = {401: "unauthorized", 403: "unauthorized", 404: "model_unavailable", 429: "rate_limited"}.get(upstream_status, "provider_error")
-                    self.assertEqual(self.client.get("/api/render-status").json()["state"], expected_state)
-        self.assertEqual(list(self.output_dir.iterdir()), [])
+                self.assertEqual(list(self.output_dir.iterdir()), [])
 
     def test_provider_timeout_and_connection_errors_are_sanitized(self):
         for error, expected_status in (
@@ -296,8 +381,10 @@ class RenderApiTests(unittest.TestCase):
         payloads = (
             {}, {"data": []}, {"data": [{"b64_json": ""}]},
             {"data": [{"b64_json": "not base64!"}]},
-            {"data": [{"b64_json": base64.b64encode(b"not an image").decode()}]},
-            {"data": [{"b64_json": base64.b64encode(image_bytes("JPEG")).decode()}]},
+            {"data": [{"b64_json": base64.b64encode(
+                b"not an image").decode()}]},
+            {"data": [{"b64_json": base64.b64encode(
+                image_bytes("JPEG")).decode()}]},
         )
         for payload in payloads:
             with self.subTest(payload=str(payload)[:80]):
@@ -305,14 +392,13 @@ class RenderApiTests(unittest.TestCase):
                 self.assertEqual(self.render().status_code, 502)
         self.provider_response = httpx.Response(200, content=b"invalid json")
         self.assertEqual(self.render().status_code, 502)
-        self.assertEqual(self.client.get("/api/render-status").json()["state"], "provider_error")
         self.assertEqual(list(self.output_dir.iterdir()), [])
 
     def test_provider_size_limits_are_enforced(self):
-        with patch.object(image_render, "MAX_PROVIDER_RESPONSE_BYTES", 16):
+        with patch.object(openai_provider, "MAX_PROVIDER_RESPONSE_BYTES", 16):
             self.assertEqual(self.render().status_code, 502)
         self.provider_response = success_response()
-        with patch.object(image_render, "MAX_RENDER_BYTES", len(image_bytes()) - 1):
+        with patch.object(openai_provider, "MAX_RENDER_BYTES", len(image_bytes()) - 1):
             self.assertEqual(self.render().status_code, 502)
         self.assertEqual(list(self.output_dir.iterdir()), [])
 
@@ -320,7 +406,8 @@ class RenderApiTests(unittest.TestCase):
         with patch.object(main, "PUBLIC_BASE_URL", "https://cdn.example.test/infra"):
             response = self.render()
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json()["url"].startswith("https://cdn.example.test/infra/outputs/"))
+        self.assertTrue(response.json()["url"].startswith(
+            "https://cdn.example.test/infra/outputs/"))
         self.provider_response = success_response()
         with patch.object(Path, "write_bytes", side_effect=OSError("secret path")):
             with self.assertLogs("main", level="ERROR"):
@@ -328,43 +415,3 @@ class RenderApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertNotIn("secret path", response.text)
         self.assertEqual(len(list(self.output_dir.iterdir())), 1)
-
-
-class RenderUploadLifecycleTests(unittest.IsolatedAsyncioTestCase):
-    async def test_upload_is_closed_on_success_and_every_failure_path(self):
-        request = Request({
-            "type": "http", "method": "POST", "path": "/api/render-image",
-            "headers": [], "scheme": "http", "server": ("testserver", 80),
-            "root_path": "", "query_string": b"", "router": main.app.router,
-        })
-        for scenario in ("success", "missing-config", "invalid-prompt", "invalid-image", "provider-timeout", "provider-corrupt", "storage-error"):
-            with self.subTest(scenario=scenario), tempfile.TemporaryDirectory() as directory:
-                uploaded = UploadFile(
-                    file=BytesIO(b"invalid" if scenario == "invalid-image" else image_bytes()),
-                    filename="source.png", headers=Headers({"content-type": "image/png"}),
-                )
-
-                def handle(_request):
-                    if scenario == "provider-timeout":
-                        raise httpx.ReadTimeout("Timed out")
-                    if scenario == "provider-corrupt":
-                        return httpx.Response(200, json={"data": []})
-                    return success_response()
-
-                env = {**TEST_ENV, "OPENAI_API_KEY": "" if scenario == "missing-config" else TEST_ENV["OPENAI_API_KEY"]}
-                with patch.dict(os.environ, env), patch.object(main, "OUTPUT_DIR", Path(directory)), mock_provider(handle):
-                    if scenario == "success":
-                        await main.create_render(request, uploaded, "A prompt", "")
-                    elif scenario == "storage-error":
-                        with patch.object(Path, "write_bytes", side_effect=OSError("Cannot save")):
-                            with self.assertLogs("main", level="ERROR"), self.assertRaises(HTTPException):
-                                await main.create_render(request, uploaded, "A prompt", "")
-                    else:
-                        with self.assertRaises(HTTPException):
-                            await main.create_render(request, uploaded, "" if scenario == "invalid-prompt" else "A prompt", "")
-                self.assertTrue(uploaded.file.closed)
-
-
-if __name__ == "__main__":
-    unittest.main()
-

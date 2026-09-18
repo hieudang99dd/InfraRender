@@ -1,0 +1,16 @@
+﻿services:
+  - type: web
+    name: infrarender-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: singapore
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: INFRARENDER_ENV
+        value: production
+      - key: INFRARENDER_CORS_ORIGINS
+        value: https://hieudang99dd.github.io
+      - key: OPENAI_API_KEY
+        sync: false

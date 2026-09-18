@@ -1,0 +1,19 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - infrarender_data:/data
+    environment:
+      - INFRARENDER_ENV=production
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Cho phép Frontend từ localhost hoặc domain thực tế gọi vào API
+      - INFRARENDER_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    restart: unless-stopped
+
+volumes:
+  infrarender_data:
+

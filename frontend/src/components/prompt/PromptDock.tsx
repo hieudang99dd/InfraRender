@@ -15,8 +15,13 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useRenderService } from "@/hooks/useRenderService";
+import type { PromptMode } from "@/lib/api";
 
 type PromptDockProps = {
+  promptMode: PromptMode;
+  onPromptModeChange: (mode: PromptMode) => void;
+  analysis: string[];
+  model: string | null;
   prompt: string;
   onPromptChange: (value: string) => void;
   negativePrompt: string;
@@ -36,6 +41,7 @@ type PromptDockProps = {
 };
 
 export default function PromptDock({
+  promptMode, onPromptModeChange, analysis, model,
   prompt,
   onPromptChange,
   negativePrompt,
@@ -104,10 +110,18 @@ export default function PromptDock({
           <span className="section-icon">
             <FileText size={17} />
           </span>
-          <h2 id="prompt-title">Soạn chỉ dẫn phối cảnh</h2>
+          <h2 id="prompt-title">Soạn Chỉ thị Thiết kế (Prompt)</h2>
         </div>
       </div>
       <div className="prompt-content">
+        <label className="field-label" htmlFor="prompt-engine">Phương thức Chỉ thị</label>
+        <select id="prompt-engine" className="prompt-engine-select" value={promptMode} onChange={e=>onPromptModeChange(e.target.value as PromptMode)} disabled={isGenerating||isRendering}>
+          <option value="template">Theo thiết lập — không gọi AI</option>
+          <option value="refine">AI tinh chỉnh mô tả</option>
+          <option value="vision">AI phân tích ảnh gốc</option>
+        </select>
+        <p className="engine-help">{promptMode==="template"?"Ghép các lựa chọn thành Chỉ thị tiếng Việt, không phân tích ảnh.":promptMode==="refine"?"AI tối ưu mô tả từ thiết lập. Yêu cầu có thể phát sinh phí API.":"AI đọc ảnh và nhận xét bố cục, kiến trúc, vật liệu, giao thông. Yêu cầu có thể phát sinh phí API."}</p>
+        {analysis.length>0 && <details className="prompt-analysis"><summary>Nhận xét từ AI{model?` · ${model}`:""}</summary><ul>{analysis.map((item,index)=><li key={index}>{item}</li>)}</ul></details>}
         <label className="field-label" htmlFor="scene-notes">
           Ghi chú ý tưởng <span>Không bắt buộc</span>
         </label>
@@ -131,7 +145,7 @@ export default function PromptDock({
                 resetCopyFeedback();
               }}
             >
-              Chỉ dẫn chính
+              Chỉ thị gốc
             </button>
             <button
               type="button"
@@ -163,10 +177,10 @@ export default function PromptDock({
                 resetCopyFeedback();
               }}
               disabled={!currentText && !(mode === "prompt" && isGenerating)}
-              aria-label={mode === "prompt" ? "Xóa chỉ dẫn chính" : "Xóa nội dung loại trừ"}
+              aria-label={mode === "prompt" ? "Xóa Chỉ thị chính" : "Xóa nội dung loại trừ"}
             >
               <Trash2 size={14} />
-              {mode === "prompt" ? "Xóa chỉ dẫn" : "Xóa loại trừ"}
+              {mode === "prompt" ? "Xóa Chỉ thị" : "Xóa loại trừ"}
             </button>
           </div>
         </div>
@@ -186,7 +200,7 @@ export default function PromptDock({
           }}
           placeholder={
             mode === "prompt"
-              ? "Tự soạn hoặc nhấn Tổng hợp chỉ dẫn để tạo nội dung tự động. Nhấn Dựng phối cảnh khi chỉ dẫn đã phù hợp."
+              ? "Tự soạn hoặc nhấn Tổng hợp Chỉ thị để AI tạo nội dung tự động. Nhấn Kết xuất (Render) khi chỉ dẫn đã phù hợp."
               : "Nhập những chi tiết bạn không muốn xuất hiện trong phối cảnh. Để trống nếu không có yêu cầu loại trừ."
           }
         />
@@ -195,7 +209,7 @@ export default function PromptDock({
             {isRendering
               ? "Tạm khóa khi đang dựng phối cảnh"
               : isGenerating
-                ? "AI đang tổng hợp chỉ dẫn…"
+                ? promptMode === "template" ? "Đang tổng hợp thiết lập…" : "AI đang xử lý yêu cầu…"
                 : mode === "prompt"
                   ? "Chỉ dẫn phối cảnh · Có thể chỉnh sửa"
                   : "Những chi tiết cần tránh trong kết quả"}
@@ -245,25 +259,23 @@ export default function PromptDock({
                 onGenerate();
               }}
               disabled={!canGenerate || isGenerating || isRendering}
-              title={!canGenerate ? "Thêm ảnh tham chiếu để tổng hợp chỉ dẫn" : isRendering ? "Chờ dựng xong" : undefined}
+              title={!canGenerate ? "Thêm ảnh tham chiếu để tổng hợp chỉ dẫn" : isRendering ? "Đang trong quá trình kết xuất..." : undefined}
               aria-busy={isGenerating}
             >
               {isGenerating ? <LoaderCircle size={15} className="spin" /> : <Sparkles size={15} />}
-              {isGenerating ? "Đang tổng hợp…" : prompt ? "Tạo lại chỉ dẫn" : "Tổng hợp chỉ dẫn"}
+              {isGenerating ? "Đang tổng hợp…" : prompt ? "Cập nhật Chỉ thị" : "Tổng hợp Chỉ thị"}
             </button>
           </div>
         </div>
         <div className="render-action-row">
           <div className="render-service-copy">
-            <strong>Dựng phối cảnh</strong>
+            <strong>Kết xuất (Render)</strong>
             <p aria-live="polite">
               {isRendering
-                ? "Đang dựng phối cảnh, có thể mất vài phút…"
-                : !renderService.service?.configured
-                  ? "Dịch vụ dựng phối cảnh chưa kết nối."
-                  : "Sẵn sàng dựng từ ảnh và chỉ dẫn hiện tại."}
+                ? "Đang khởi tạo kết xuất (Rendering), vui lòng chờ…"
+                : renderService.message}
             </p>
-            {!isRendering && !renderService.service?.configured && (
+            {!isRendering && (
               <button
                 type="button"
                 className="text-button"
@@ -292,13 +304,13 @@ export default function PromptDock({
                 : !prompt.trim()
                   ? "Cần có chỉ dẫn trước khi dựng phối cảnh"
                   : !renderService.service?.configured
-                    ? "Dịch vụ dựng phối cảnh chưa sẵn sàng"
+                    ? "Render Engine hiện chưa sẵn sàng"
                     : undefined
             }
             aria-busy={isRendering}
           >
             {isRendering ? <LoaderCircle size={17} className="spin" /> : <WandSparkles size={17} />}
-            {isRendering ? "Đang dựng…" : "Dựng phối cảnh"}
+            {isRendering ? "Đang kết xuất..." : "Kết xuất (Render)"}
           </button>
         </div>
       </div>

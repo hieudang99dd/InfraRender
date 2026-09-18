@@ -1,0 +1,74 @@
+﻿name: Deploy Next.js site to Pages
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "pages-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      INFRARENDER_PAGES: "true"
+      NEXT_PUBLIC_INFRARENDER_API_URL: ${{ vars.NEXT_PUBLIC_INFRARENDER_API_URL }}
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Check deployment configuration
+        run: |
+          if [ -z "$NEXT_PUBLIC_INFRARENDER_API_URL" ]; then
+            echo "::error::Set the repository variable NEXT_PUBLIC_INFRARENDER_API_URL to the deployed HTTPS backend URL."
+            exit 1
+          fi
+      - name: Run frontend tests
+        run: npm test
+      - name: Lint
+        run: npm run lint
+      - name: Type check
+        run: npm run typecheck
+      - name: Build with Next.js
+        run: npm run build
+      - name: Check static artifact
+        run: test -f out/index.html && test -d out/_next
+      - name: Upload artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./frontend/out
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

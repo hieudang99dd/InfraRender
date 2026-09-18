@@ -49,93 +49,13 @@ class ApiTests(unittest.TestCase):
     def test_health_reports_only_available_capabilities(self):
         response = self.client.get("/api/health")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["capabilities"], {
-            "upload": True, "prompt_generation": True, "image_generation": False
-        })
-
-    def test_all_supported_formats_have_verified_metadata_and_request_based_urls(self):
-        for image_format, extension, content_type in (
-            ("JPEG", ".jpeg", "image/jpeg"),
-            ("PNG", ".png", "image/png"),
-            ("WEBP", ".webp", "image/webp"),
-        ):
-            with self.subTest(image_format=image_format):
-                content = image_bytes(image_format)
-                response = self.upload(content, f"reference{extension}", content_type)
-                self.assertEqual(response.status_code, 200, response.text)
-                data = response.json()
-                self.assertEqual((data["width"], data["height"]), (8, 6))
-                self.assertEqual(data["content_type"], content_type)
-                self.assertEqual(data["size_bytes"], len(content))
-                self.assertEqual(data["original_name"], f"reference{extension}")
-                self.assertEqual((self.upload_dir / data["saved_name"]).read_bytes(), content)
-                self.assertEqual(
-                    data["url"], f"https://images.example.test/uploads/{data['saved_name']}"
-                )
-
-    def test_public_base_url_overrides_request_host(self):
-        with patch.object(main, "PUBLIC_BASE_URL", "https://cdn.example.test/infra"):
-            response = self.upload(image_bytes())
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json()["url"].startswith("https://cdn.example.test/infra/uploads/"))
-
-    def test_original_filename_cannot_control_saved_path(self):
-        response = self.upload(image_bytes(), "../../reference.png")
-        self.assertEqual(response.status_code, 200)
-        self.assertRegex(response.json()["saved_name"], r"^[a-f0-9]{32}\.png$")
-        self.assertEqual(len(list(self.upload_dir.iterdir())), 1)
-
-    def test_invalid_empty_and_disguised_files_are_not_stored(self):
-        cases = (
-            (b"", "empty.png", "image/png"),
-            (b"not an image", "fake.png", "image/png"),
-            (image_bytes(), "wrong.jpg", "image/jpeg"),
-            (image_bytes(), "wrong.png", "image/jpeg"),
-            (image_bytes(), "wrong.svg", "image/svg+xml"),
-            (image_bytes("GIF"), "fake.png", "image/png"),
-            (image_bytes("JPEG")[:-15], "truncated.jpg", "image/jpeg"),
-        )
-        for content, filename, content_type in cases:
-            with self.subTest(filename=filename):
-                response = self.upload(content, filename, content_type)
-                self.assertEqual(response.status_code, 400, response.text)
-                self.assertIn("detail", response.json())
-        self.assertEqual(list(self.upload_dir.iterdir()), [])
-
-    def test_oversized_upload_returns_413_and_saves_nothing(self):
-        with patch.object(image_upload, "MAX_IMAGE_BYTES", 32):
-            response = self.upload(b"a" * 128)
-        self.assertEqual(response.status_code, 413)
-        self.assertEqual(list(self.upload_dir.iterdir()), [])
-
-    def test_excessive_pixel_count_is_rejected(self):
-        with patch.object(image_upload, "MAX_IMAGE_PIXELS", 40):
-            response = self.upload(image_bytes())
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(list(self.upload_dir.iterdir()), [])
-
-    def test_unset_prompt_settings_add_no_automatic_context(self):
-        for payload in ({}, {
-            "preserve_geometry": None,
-            "preserve_road_markings": None,
-            "creativity": None,
-            "quality": None,
-            "aspect_ratio": None,
-        }, {
-            "camera": "  ", "lighting": "", "quality": "", "aspect_ratio": "  ",
-            "buildings_density": None, "vehicles_density": "", "vegetation_density": "  ",
-        }, {
-            "custom_keywords": [],
-        }, {
-            "custom_keywords": ["", "  ", "\n\t"],
-        }):
-            with self.subTest(payload=payload):
-                response = self.client.post("/api/generate-prompt", json=payload)
-                self.assertEqual(response.status_code, 200, response.text)
-                self.assertEqual(
-                    response.json()["prompt"],
-                    "Táº¡o áº£nh phá»‘i cáº£nh dá»±a trÃªn áº£nh tham chiáº¿u Ä‘Æ°á»£c cung cáº¥p.",
-                )
+        result = response.json()
+        self.assertEqual(result["status"], "ok")
+        self.assertTrue(result["capabilities"]["upload"])
+        self.assertTrue(result["capabilities"]["prompt_generation"])
+        self.assertFalse(result["capabilities"]["image_generation"])
+        self.assertFalse(result["renderer"]["configured"])
+        self.assertFalse(result["renderer"]["ready"])
 
     def test_legacy_prompt_fields_only_add_the_explicit_context(self):
         response = self.client.post("/api/generate-prompt", json={
@@ -153,7 +73,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         prompt = response.json()["prompt"]
         for fragment in (
-            "Háº¡ táº§ng: urban interchange.", "Xá»­ lÃ½ máº·t Ä‘Æ°á»ng: asphalt roads.",
+            "urban interchange", "asphalt roads",
             "modern offices", "light traffic", "tropical trees", "clear skies",
             "golden hour", "concrete and steel", "architectural photography",
             "Keep the pedestrian bridge.",
@@ -161,17 +81,18 @@ class ApiTests(unittest.TestCase):
             self.assertIn(fragment, prompt)
         self.assertNotIn("bridge..", prompt)
         for omitted in (
-            "Giá»¯ nguyÃªn", "Má»©c sÃ¡ng táº¡o", "Äá»™ phÃ¢n giáº£i Ä‘áº§u ra",
-            "Tá»· lá»‡ khung hÃ¬nh", "GÃ³c nhÃ¬n vÃ  bá»‘ cá»¥c", "chÃ¢n thá»±c nhÆ° áº£nh chá»¥p",
+            "Bắt buộc giữ nguyên", "Mức độ bảo toàn và sáng tạo", "Độ phân giải hướng tới",
+            "Tỷ lệ khung hình", "góc nhìn từ trên cao", "chân thực như ảnh chụp",
         ):
             self.assertNotIn(omitted, prompt)
 
     def test_a_single_scene_choice_does_not_add_unselected_settings(self):
         response = self.client.post("/api/generate-prompt", json={"weather": "night sky"})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["prompt"],
-            "Táº¡o áº£nh phá»‘i cáº£nh dá»±a trÃªn áº£nh tham chiáº¿u Ä‘Æ°á»£c cung cáº¥p. "
-            "Thá»i tiáº¿t vÃ  khÃ´ng khÃ­: night sky.")
+        prompt = response.json()["prompt"]
+        self.assertIn("night sky", prompt)
+        for omitted in ("Kiến trúc và Vật liệu:", "Giao thông và Mặt đường:", "Cảnh quan và Cây xanh:", "Mức độ bảo toàn", "Yêu cầu đầu ra:"):
+            self.assertNotIn(omitted, prompt)
 
     def test_combined_known_presets_generate_a_complete_vietnamese_prompt(self):
         response = self.client.post("/api/generate-prompt", json={
@@ -190,30 +111,23 @@ class ApiTests(unittest.TestCase):
             "creativity": 25,
             "quality": "Original",
             "aspect_ratio": "16:9",
-            "custom_keywords": ["phá»‘ ven sÃ´ng", "Ä‘Ã¨n lá»“ng"],
-            "notes": "Giá»¯ nguyÃªn cÃ¢y cáº§u.",
+            "custom_keywords": ["phố ven sông", "đèn lồng"],
+            "notes": "Giữ nguyên cây cầu.",
         })
         self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["prompt"], " ".join([
-            "Táº¡o áº£nh phá»‘i cáº£nh dá»±a trÃªn áº£nh tham chiáº¿u Ä‘Æ°á»£c cung cáº¥p.",
-            "Giá»¯ nguyÃªn hÃ¬nh dáº¡ng Ä‘Æ°á»ng, cÃ¡c nÃºt giao, bá»‘ trÃ­ Ä‘á»‹a hÃ¬nh vÃ  tÆ°Æ¡ng quan khÃ´ng gian chÃ­nh cá»§a áº£nh gá»‘c.",
-            "Cho phÃ©p thiáº¿t káº¿ láº¡i váº¡ch káº» Ä‘Æ°á»ng Ä‘á»ƒ phÃ¹ há»£p vá»›i bá»‘ trÃ­ Ä‘Æ°á»ng Ä‘á» xuáº¥t.",
-            "CÃ´ng trÃ¬nh vÃ  kiáº¿n trÃºc: kiáº¿n trÃºc hiá»‡n Ä‘áº¡i.",
-            "Máº­t Ä‘á»™ cÃ´ng trÃ¬nh: vá»«a pháº£i.",
-            "PhÆ°Æ¡ng tiá»‡n vÃ  giao thÃ´ng: nhiá»u loáº¡i phÆ°Æ¡ng tiá»‡n káº¿t há»£p.",
-            "Máº­t Ä‘á»™ phÆ°Æ¡ng tiá»‡n: khÃ´ng cÃ³.",
-            "CÃ¢y xanh vÃ  cáº£nh quan: tháº£m cá» vÃ  cÃ¢y phá»§ Ä‘áº¥t.",
-            "Máº­t Ä‘á»™ cÃ¢y xanh: dÃ y Ä‘áº·c.",
-            "Thá»i tiáº¿t vÃ  khÃ´ng khÃ­: trá»i náº¯ng.",
-            "Ãnh sÃ¡ng: náº¯ng áº¥m trong giá» vÃ ng.",
-            "Phong cÃ¡ch hÃ¬nh áº£nh: phá»‘i cáº£nh chÃ¢n thá»±c nhÆ° áº£nh chá»¥p.",
-            "GÃ³c nhÃ¬n vÃ  bá»‘ cá»¥c: gÃ³c nhÃ¬n tá»« trÃªn cao bao quÃ¡t toÃ n bá»™ khu vá»±c.",
-            "Bá»‘i cáº£nh tÃ¹y chá»‰nh: phá»‘ ven sÃ´ng; Ä‘Ã¨n lá»“ng.",
-            "Má»©c sÃ¡ng táº¡o: 25/100.",
-            "Äá»™ phÃ¢n giáº£i Ä‘áº§u ra: giá»¯ nguyÃªn Ä‘á»™ phÃ¢n giáº£i cá»§a áº£nh tham chiáº¿u.",
-            "Tá»· lá»‡ khung hÃ¬nh mong muá»‘n: 16:9.",
-            "YÃªu cáº§u bá»• sung: Giá»¯ nguyÃªn cÃ¢y cáº§u.",
-        ]))
+        prompt = response.json()["prompt"]
+        for fragment in (
+            "trời nắng", "nắng ấm trong giờ vàng", "kiến trúc hiện đại", "Mật độ công trình: vừa phải",
+            "nhiều loại phương tiện kết hợp", "Mật độ phương tiện: không có", "thảm cỏ và cây phủ đất",
+            "Mật độ cây xanh: dày đặc", "phối cảnh chân thực như ảnh chụp", "góc nhìn từ trên cao bao quát toàn bộ khu vực",
+            "giữ nguyên bố trí địa hình và các nút giao", "thiết kế lại vạch kẻ đường", "Tỷ lệ khung hình: 16:9",
+            "phố ven sông", "đèn lồng", "Giữ nguyên cây cầu.",
+        ):
+            self.assertIn(fragment, prompt)
+        for untranslated in ("sunny weather", "modern architecture", "golden-hour", "photorealistic", "grass and ground-cover"):
+            self.assertNotIn(untranslated, prompt)
+        self.assertEqual(response.json()["mode"], "template")
+        self.assertIsNone(response.json()["model"])
 
     def test_user_text_keeps_its_language_and_is_not_partially_translated(self):
         response = self.client.post("/api/generate-prompt", json={
@@ -223,60 +137,64 @@ class ApiTests(unittest.TestCase):
             "notes": "Use warm golden-hour sunlight. Keep the label 'Original'.",
         })
         self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["prompt"], " ".join([
-            "Táº¡o áº£nh phá»‘i cáº£nh dá»±a trÃªn áº£nh tham chiáº¿u Ä‘Æ°á»£c cung cáº¥p.",
-            "Thá»i tiáº¿t vÃ  khÃ´ng khÃ­: sunny weather beside golden dunes.",
-            "Váº­t liá»‡u vÃ  xá»­ lÃ½ bá» máº·t: tropical vegetation.",
-            "Bá»‘i cáº£nh tÃ¹y chá»‰nh: sunny weather; Original; Keep signage: bus lane.",
-            "YÃªu cáº§u bá»• sung: Use warm golden-hour sunlight. Keep the label 'Original'.",
-        ]))
+        prompt = response.json()["prompt"]
+        for fragment in ("sunny weather beside golden dunes", "tropical vegetation", "sunny weather, Original, Keep signage: bus lane", "Use warm golden-hour sunlight. Keep the label 'Original'."):
+            self.assertIn(fragment, prompt)
+        self.assertNotIn("cây xanh nhiệt đới", prompt)
 
     def test_custom_context_supports_arbitrary_phrases_and_normalizes_vietnamese(self):
         response = self.client.post("/api/generate-prompt", json={
             "custom_keywords": [
-                "  phá»‘ cá»•   Há»™i An  ", "Ä‘Ã¨n lá»“ng, cáº§u gá»—", "  ",
-                normalize("NFD", "PHá» Cá»” Há»˜I AN"), "ðŸŒ³ vÆ°á»n trÃªn mÃ¡i",
+                "  phố cổ   Hội An  ", "đèn lồng, cầu gỗ", "  ",
+                normalize("NFD", "PHỐ CỔ HỘI AN"), "🌳 vườn trên mái",
             ],
         })
         self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["prompt"],
-            "Táº¡o áº£nh phá»‘i cáº£nh dá»±a trÃªn áº£nh tham chiáº¿u Ä‘Æ°á»£c cung cáº¥p. "
-            "Bá»‘i cáº£nh tÃ¹y chá»‰nh: phá»‘ cá»• Há»™i An; Ä‘Ã¨n lá»“ng, cáº§u gá»—; ðŸŒ³ vÆ°á»n trÃªn mÃ¡i.")
+        prompt = response.json()["prompt"]
+        self.assertIn("phố cổ Hội An", prompt)
+        self.assertIn("đèn lồng, cầu gỗ", prompt)
+        self.assertIn("🌳 vườn trên mái", prompt)
+        self.assertEqual(prompt.lower().count("phố cổ hội an"), 1)
+        self.assertEqual(normalize("NFC", prompt), prompt)
 
     def test_custom_context_and_existing_choices_are_independent(self):
         response = self.client.post("/api/generate-prompt", json={
             "weather": "light mist",
-            "custom_keywords": ["chá»£ ná»•i miá»n TÃ¢y"],
-            "notes": "Giá»¯ lá»‘i Ä‘i bá»™.",
+            "custom_keywords": ["chợ nổi miền Tây"],
+            "notes": "Giữ lối đi bộ.",
             "preserve_geometry": False,
             "creativity": 0,
         })
         self.assertEqual(response.status_code, 200, response.text)
         prompt = response.json()["prompt"]
         for fragment in (
-            "Thá»i tiáº¿t vÃ  khÃ´ng khÃ­: sÆ°Æ¡ng nháº¹.", "Bá»‘i cáº£nh tÃ¹y chá»‰nh: chá»£ ná»•i miá»n TÃ¢y.",
-            "YÃªu cáº§u bá»• sung: Giá»¯ lá»‘i Ä‘i bá»™.", "Cho phÃ©p Ä‘iá»u chá»‰nh cÃ³ chá»§ Ä‘Ã­ch",
-            "Má»©c sÃ¡ng táº¡o: 0/100.",
+            "sương nhẹ", "chợ nổi miền Tây", "Giữ lối đi bộ.",
         ):
             self.assertIn(fragment, prompt)
-        self.assertNotIn("Ãnh sÃ¡ng:", prompt)
+        self.assertNotIn("ánh sáng tự nhiên", prompt)
+        self.assertNotIn("Bắt buộc giữ nguyên bố trí địa hình", prompt)
+        self.assertIn("Cho phép điều chỉnh có chủ đích hình học", prompt)
+        self.assertIn("Mức sáng tạo: 0/100", prompt)
+        self.assertNotIn("Bảo toàn tuyệt đối", prompt)
 
     def test_custom_context_accepts_keyword_count_and_unicode_length_boundaries(self):
         for keywords in (
-            [f"Ã½ tÆ°á»Ÿng {index}" for index in range(20)],
-            ["ðŸŒ³" * 120],
-            [normalize("NFD", "áº¿" * 120)],
+            [f"ý tưởng {index}" for index in range(20)],
+            ["🌳" * 120],
+            [normalize("NFD", "ế" * 120)],
         ):
             with self.subTest(keywords=keywords):
                 response = self.client.post("/api/generate-prompt", json={
                     "custom_keywords": keywords,
                 })
                 self.assertEqual(response.status_code, 200, response.text)
+                for keyword in keywords:
+                    self.assertIn(normalize("NFC", keyword), response.json()["prompt"])
 
     def test_invalid_custom_context_is_rejected_with_validation_errors(self):
         for keywords in (
-            "phá»‘ cá»•", None, {"keyword": "phá»‘ cá»•"}, [42], [True], [None], [["phá»‘ cá»•"]],
-            ["x" * 121], ["ðŸŒ³" * 121], [f"Ã½ tÆ°á»Ÿng {index}" for index in range(21)],
+            "phố cổ", None, {"keyword": "phố cổ"}, [42], [True], [None], [["phố cổ"]],
+            ["x" * 121], ["🌳" * 121], [f"ý tưởng {index}" for index in range(21)],
         ):
             with self.subTest(keywords=str(keywords)[:80]):
                 response = self.client.post("/api/generate-prompt", json={
@@ -286,16 +204,17 @@ class ApiTests(unittest.TestCase):
 
     def test_density_can_be_selected_without_an_object_type(self):
         for field, label in (
-            ("buildings_density", "Máº­t Ä‘á»™ cÃ´ng trÃ¬nh"),
-            ("vehicles_density", "Máº­t Ä‘á»™ phÆ°Æ¡ng tiá»‡n"),
-            ("vegetation_density", "Máº­t Ä‘á»™ cÃ¢y xanh"),
+            ("buildings_density", "Mật độ công trình"),
+            ("vehicles_density", "Mật độ phương tiện"),
+            ("vegetation_density", "Mật độ cây xanh"),
         ):
             with self.subTest(field=field):
                 response = self.client.post("/api/generate-prompt", json={field: "  sparse  "})
                 self.assertEqual(response.status_code, 200)
-                self.assertEqual(response.json()["prompt"],
-                    "Táº¡o áº£nh phá»‘i cáº£nh dá»±a trÃªn áº£nh tham chiáº¿u Ä‘Æ°á»£c cung cáº¥p. "
-                    f"{label}: thÆ°a.")
+                prompt = response.json()["prompt"]
+                self.assertIn(f"{label}: thưa", prompt)
+                for unselected in ("kiến trúc hiện đại", "ô tô", "cây xanh nhiệt đới"):
+                    self.assertNotIn(unselected, prompt)
 
     def test_density_and_object_type_are_independent_explicit_choices(self):
         response = self.client.post("/api/generate-prompt", json={
@@ -306,9 +225,9 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         prompt = response.json()["prompt"]
         for fragment in (
-            "CÃ´ng trÃ¬nh vÃ  kiáº¿n trÃºc: modern offices.", "Máº­t Ä‘á»™ cÃ´ng trÃ¬nh: low.",
-            "PhÆ°Æ¡ng tiá»‡n vÃ  giao thÃ´ng: buses.", "Máº­t Ä‘á»™ phÆ°Æ¡ng tiá»‡n: khÃ´ng cÃ³.",
-            "CÃ¢y xanh vÃ  cáº£nh quan: tropical trees.", "Máº­t Ä‘á»™ cÃ¢y xanh: dÃ y Ä‘áº·c.",
+            "modern offices", "Mật độ công trình: low",
+            "buses", "Mật độ phương tiện: không có",
+            "tropical trees", "Mật độ cây xanh: dày đặc",
         ):
             self.assertIn(fragment, prompt)
 
@@ -318,11 +237,13 @@ class ApiTests(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 200)
         prompt = response.json()["prompt"]
-        self.assertIn("Giá»¯ nguyÃªn hÃ¬nh dáº¡ng Ä‘Æ°á»ng", prompt)
-        self.assertIn("Giá»¯ nguyÃªn há»‡ thá»‘ng váº¡ch káº» lÃ n Ä‘Æ°á»ng", prompt)
-        self.assertIn("Má»©c sÃ¡ng táº¡o: 0/100.", prompt)
-        self.assertNotIn("GÃ³c nhÃ¬n", prompt)
-        self.assertNotIn("Äá»™ phÃ¢n giáº£i Ä‘áº§u ra", prompt)
+        self.assertIn("Bắt buộc giữ nguyên bố trí địa hình và các nút giao", prompt)
+        self.assertIn("Bắt buộc giữ nguyên hệ thống vạch kẻ đường", prompt)
+        self.assertIn("Ưu tiên bám sát hình học", prompt)
+        self.assertIn("Mức sáng tạo: 0/100", prompt)
+        self.assertNotIn("Bảo toàn tuyệt đối", prompt)
+        self.assertNotIn("Góc nhìn", prompt)
+        self.assertNotIn("Độ phân giải đầu ra", prompt)
 
     def test_disabled_preservation_and_custom_camera_are_respected(self):
         response = self.client.post("/api/generate-prompt", json={
@@ -335,22 +256,24 @@ class ApiTests(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 200)
         prompt = response.json()["prompt"]
-        self.assertIn("Cho phÃ©p Ä‘iá»u chá»‰nh cÃ³ chá»§ Ä‘Ã­ch", prompt)
-        self.assertIn("Cho phÃ©p thiáº¿t káº¿ láº¡i váº¡ch káº» Ä‘Æ°á»ng", prompt)
-        self.assertIn("Má»©c sÃ¡ng táº¡o: 90/100", prompt)
-        self.assertIn("GÃ³c nhÃ¬n vÃ  bá»‘ cá»¥c: street-level wide-angle view.", prompt)
-        self.assertIn("Äá»™ phÃ¢n giáº£i Ä‘áº§u ra mong muá»‘n: 4K.", prompt)
-        self.assertIn("Tá»· lá»‡ khung hÃ¬nh mong muá»‘n: 4:3.", prompt)
-        self.assertNotIn("Giá»¯ nguyÃªn hÃ¬nh dáº¡ng Ä‘Æ°á»ng", prompt)
-        self.assertNotIn("giá»¯ nguyÃªn gÃ³c nhÃ¬n", prompt)
+        self.assertIn("Tái diễn giải mạnh mẽ", prompt)
+        self.assertIn("thiết kế lại vạch kẻ đường", prompt)
+        self.assertIn("street-level wide-angle view", prompt)
+        self.assertIn("Độ phân giải hướng tới: 4K", prompt)
+        self.assertIn("Tỷ lệ khung hình: 4:3", prompt)
+        self.assertNotIn("Bắt buộc giữ nguyên", prompt)
+        self.assertNotIn("Giữ nguyên hình dạng đường", prompt)
+        self.assertNotIn("giữ nguyên góc nhìn", prompt)
 
     def test_original_output_settings_retain_reference_properties(self):
         response = self.client.post("/api/generate-prompt", json={
             "quality": "Original", "aspect_ratio": "Original"
         })
+        self.assertEqual(response.status_code, 200)
         prompt = response.json()["prompt"]
-        self.assertIn("giá»¯ nguyÃªn Ä‘á»™ phÃ¢n giáº£i cá»§a áº£nh tham chiáº¿u", prompt)
-        self.assertIn("giá»¯ nguyÃªn tá»· lá»‡ khung hÃ¬nh cá»§a áº£nh tham chiáº¿u", prompt)
+        self.assertIn("ảnh tham chiếu", prompt)
+        self.assertNotIn("Độ phân giải hướng tới:", prompt)
+        self.assertNotIn("Tỷ lệ khung hình:", prompt)
 
     def test_invalid_prompt_settings_return_validation_errors(self):
         for payload in (

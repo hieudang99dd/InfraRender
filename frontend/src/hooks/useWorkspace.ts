@@ -1,416 +1,144 @@
 "use client";
-
 import { useEffect, useRef, useState } from "react";
 import type { ImageChangePayload } from "@/components/workspace/ImageCanvas";
-import { apiRequest, uploadImage, requestRender, deleteFile, type RenderResponse } from "@/lib/api";
+import { apiRequest, uploadImage, requestRender, type PromptMode, type PromptResponse, type RenderResponse } from "@/lib/api";
 import { DEFAULT_SETTINGS, toPromptRequest, type RenderSettings } from "@/lib/render-settings";
-import { downloadPrompt, promptSignature, type PromptVersion, type RenderVersion } from "@/lib/workspace";
+import { downloadPrompt, promptSignature, type PromptVersion, type RenderVersion, type StoredSource } from "@/lib/workspace";
+import { emptyWorkspace, restoreRender, type WorkspaceState } from "@/lib/workspace-state";
+import { useProjectPersistence } from "./useProjectPersistence";
 
 export function useWorkspace() {
-  const [projectName, setProjectName] = useState("Dự án hạ tầng mới");
-  const [projectRevision, setProjectRevision] = useState(0);
-  const [source, setSource] = useState<ImageChangePayload | null>(null);
-  const [settings, setSettings] = useState<RenderSettings>({ ...DEFAULT_SETTINGS });
-  const [notes, setNotes] = useState("");
-  const [prompt, setPrompt] = useState("");
-  const [negativePrompt, setNegativePrompt] = useState("");
-  const [versions, setVersions] = useState<PromptVersion[]>([]);
-  const [activeVersion, setActiveVersion] = useState<string | null>(null);
-  const [renderVersions, setRenderVersions] = useState<RenderVersion[]>([]);
-  const [sourceImageName, setSourceImageName] = useState<string | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [data,setData]=useState(()=>emptyWorkspace(DEFAULT_SETTINGS));
+  const [preview,setPreview]=useState<ImageChangePayload|null>(null);
+  const [projectRevision,setProjectRevision]=useState(0);
+  const [isUploading,setUploading]=useState(false);
+  const [isGenerating,setGenerating]=useState(false);
+  const [isRendering,setRendering]=useState(false);
+  const [isDownloading,setDownloading]=useState(false);
+  const [error,setError]=useState("");
+  const [notice,setNotice]=useState("");
+  const uploadRef=useRef<AbortController|null>(null), generationRef=useRef<AbortController|null>(null);
+  const renderRef=useRef<AbortController|null>(null), downloadRef=useRef<AbortController|null>(null);
+  const previewRef=useRef<ImageChangePayload|null>(null);
+  const persistence=useProjectPersistence(data,setData,isUploading);
+  const source=preview || data.source;
+  const renderedImage=data.renderVersions.find(v=>v.id===data.activeRenderId)||null;
+  const currentSignature=promptSignature(data.settings,data.notes,data.source?.saved_name||null);
 
-  useEffect(() => {
-    try {
-      const savedV1 = localStorage.getItem("infrarender.workspace.v1");
-      let data = null;
-      if (savedV1) {
-        data = JSON.parse(savedV1);
-      } else {
-        const savedV0 = localStorage.getItem("infraRender_workspace");
-        if (savedV0) {
-          data = JSON.parse(savedV0);
-          localStorage.setItem("infrarender.workspace.v1", savedV0);
-        }
-      }
-      
-      if (data) {
-        if (data.projectName) setProjectName(data.projectName);
-        if (data.settings) setSettings(data.settings);
-        if (data.notes) setNotes(data.notes);
-        if (data.prompt) setPrompt(data.prompt);
-        if (data.negativePrompt) setNegativePrompt(data.negativePrompt);
-        if (data.versions) setVersions(data.versions);
-        if (data.renderVersions) setRenderVersions(data.renderVersions);
-      }
-    } catch (e) {}
-    setIsLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    const data = {
-      version: "v1",
-      projectName, settings, notes, prompt, negativePrompt, versions, renderVersions
-    };
-    localStorage.setItem("infrarender.workspace.v1", JSON.stringify(data));
-  }, [isLoaded, projectName, settings, notes, prompt, negativePrompt, versions, renderVersions]);
-
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isRendering, setIsRendering] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [renderedImage, setRenderedImage] = useState<RenderResponse | null>(null);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [generatedFrom, setGeneratedFrom] = useState("");
-  const generationRef = useRef<AbortController | null>(null);
-  const renderRef = useRef<AbortController | null>(null);
-  const downloadRef = useRef<AbortController | null>(null);
-  const versionCounter = useRef(0);
-  const sourceRef = useRef<ImageChangePayload | null>(null);
-  const currentSignature = promptSignature(settings, notes, source?.url || null);
-
-  useEffect(
-    () => () => {
-      generationRef.current?.abort();
-      renderRef.current?.abort();
-      downloadRef.current?.abort();
-      if (sourceRef.current?.url.startsWith("blob:")) URL.revokeObjectURL(sourceRef.current.url);
-    },
-    [],
-  );
-
+  useEffect(()=>()=>{uploadRef.current?.abort();generationRef.current?.abort();renderRef.current?.abort();downloadRef.current?.abort();
+    if(previewRef.current?.url.startsWith("blob:"))URL.revokeObjectURL(previewRef.current.url);
+  },[]);
+  function patch(next:Partial<WorkspaceState>) {setData(current=>({...current,...next}));}
+  function clearPreview() {
+    if(previewRef.current?.url.startsWith("blob:"))URL.revokeObjectURL(previewRef.current.url);
+    previewRef.current=null;setPreview(null);
+  }
   function cancelRequests() {
-    generationRef.current?.abort();
-    renderRef.current?.abort();
-    downloadRef.current?.abort();
-    setIsGenerating(false);
-    setIsRendering(false);
-    setIsDownloading(false);
+    uploadRef.current?.abort();generationRef.current?.abort();renderRef.current?.abort();downloadRef.current?.abort();
+    uploadRef.current=null;generationRef.current=null;renderRef.current=null;downloadRef.current=null;
+    setUploading(false);setGenerating(false);setRendering(false);setDownloading(false);
   }
-
-  function changeSource(next: ImageChangePayload | null) {
-    cancelRequests();
-    if (sourceRef.current?.url.startsWith("blob:")) URL.revokeObjectURL(sourceRef.current.url);
-    sourceRef.current = next;
-    setSource(next);
-    setSourceImageName(null);
-    // A comparison must never pair a new source with the previous source's render.
-    setRenderedImage(null);
-    setError("");
-    setNotice("");
+  async function changeSource(next:ImageChangePayload|null) {
+    cancelRequests();clearPreview();patch({source:null,activeRenderId:null});setError("");setNotice("");
+    if(!next)return;
+    previewRef.current=next;setPreview(next);
+    const controller=new AbortController();uploadRef.current=controller;setUploading(true);
+    try {
+      const result=await uploadImage(next.file,controller.signal);
+      if(controller.signal.aborted)return;
+      const stored:StoredSource={saved_name:result.saved_name,url:result.url,name:next.name,size:next.size,resolution:next.resolution};
+      patch({source:stored});clearPreview();setNotice("Đã lưu ảnh gốc. Dự án sẽ tự động lưu.");
+    } catch(err) {
+      if(!controller.signal.aborted)setError(err instanceof Error?err.message:"Không thể lưu ảnh gốc. Chọn lại ảnh để thử lại.");
+    } finally {if(uploadRef.current===controller){uploadRef.current=null;setUploading(false);}}
   }
-
-  function addVersion(text: string, signature = generatedFrom || currentSignature) {
-    const version: PromptVersion = {
-      id: `version-${++versionCounter.current}`,
-      createdAt: new Date().toISOString(),
-      prompt: text,
-      negativePrompt,
-      settings: { ...settings },
-      notes,
-      sourceName: source?.name || "Không có ảnh tham chiếu",
-      favorite: false,
-      generatedFrom: signature,
-    };
-    setVersions((current) => [version, ...current].slice(0, 20));
-    setActiveVersion(version.id);
+  function makeVersion(text:string,signature:string):PromptVersion {
+    return {id:crypto.randomUUID(),createdAt:new Date().toISOString(),prompt:text,negativePrompt:data.negativePrompt,settings:{...data.settings},
+      notes:data.notes,sourceName:source?.name||"Không có ảnh",generatedFrom:signature,favorite:false};
   }
-
   async function generatePrompt() {
-    if (
-      !source ||
-      (renderRef.current && !renderRef.current.signal.aborted) ||
-      (generationRef.current && !generationRef.current.signal.aborted)
-    )
-      return;
-    const controller = new AbortController();
-    generationRef.current = controller;
-    setIsGenerating(true);
-    setError("");
-    setNotice("");
+    if(!data.source || isUploading || renderRef.current || generationRef.current)return;
+    if(data.versions.length>=200){setError("Lịch sử đã có 200 prompt. Xóa phiên bản không cần trước khi tạo tiếp.");return;}
+    const controller=new AbortController();generationRef.current=controller;setGenerating(true);setError("");setNotice("");
     try {
-      let reference_image_name = sourceImageName;
-      if (source?.file && !reference_image_name) {
-        setNotice("AI đang phân tích không gian và vật liệu từ ảnh tham chiếu…");
-        const uploadRes = await uploadImage(source.file, controller.signal);
-        reference_image_name = uploadRes.saved_name;
-        setSourceImageName(reference_image_name);
-      }
-      
-      const requestBody = { ...toPromptRequest(settings, notes), reference_image_name };
-      const result = await apiRequest<{ prompt: string }>("/api/generate-prompt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal,
-      }, 60000);
-      if (controller.signal.aborted) return;
-      if (typeof result.prompt !== "string" || !result.prompt.trim())
-        throw new Error("Dịch vụ chưa trả về chỉ dẫn. Vui lòng thử lại.");
-      setPrompt(result.prompt);
-      setGeneratedFrom(currentSignature);
-      addVersion(result.prompt, currentSignature);
-      setNotice("Đã tạo chỉ dẫn phối cảnh và lưu vào lịch sử phiên làm việc.");
-    } catch (err) {
-      if (!controller.signal.aborted)
-        setError(err instanceof Error ? err.message : "Không thể tạo chỉ dẫn phối cảnh.");
-    } finally {
-      if (generationRef.current === controller) {
-        generationRef.current = null;
-        setIsGenerating(false);
-      }
-    }
+      const result=await apiRequest<PromptResponse>("/api/generate-prompt",{
+        method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal,
+        body:JSON.stringify({...toPromptRequest(data.settings,data.notes),reference_image_name:data.source.saved_name,mode:data.promptMode})
+      },75000);
+      if(controller.signal.aborted)return;
+      if(typeof result.prompt!=="string" || !result.prompt.trim())throw new Error("Dịch vụ chưa trả về prompt hợp lệ.");
+      const version=makeVersion(result.prompt,currentSignature);
+      setData(current=>({...current,prompt:result.prompt,generatedFrom:currentSignature,activeVersion:version.id,versions:[version,...current.versions],
+        promptAnalysis:result.analysis,promptModel:result.model}));
+      setNotice(result.mode==="template"?"Đã tạo prompt tiếng Việt theo thiết lập.":"Đã tạo prompt tiếng Việt bằng AI và lưu nhận xét.");
+    } catch(err){if(!controller.signal.aborted)setError(err instanceof Error?err.message:"Không thể tạo prompt.");}
+    finally {if(generationRef.current===controller){generationRef.current=null;setGenerating(false);}}
   }
-
   async function renderImage() {
-    if (
-      !source ||
-      !prompt.trim() ||
-      (generationRef.current && !generationRef.current.signal.aborted) ||
-      (renderRef.current && !renderRef.current.signal.aborted)
-    )
-      return;
-    const controller = new AbortController();
-    renderRef.current = controller;
-    setIsRendering(true);
-    setError("");
-    setNotice("");
+    if(!data.source || !data.prompt.trim() || isUploading || generationRef.current || renderRef.current)return;
+    if(data.renderVersions.length>=200){setError("Lịch sử đã có 200 ảnh. Xóa phiên bản không cần trước khi render tiếp.");return;}
+    const controller=new AbortController();renderRef.current=controller;setRendering(true);setError("");setNotice("");
     try {
-      let reference_image_name = sourceImageName;
-      if (source?.file && !reference_image_name) {
-        setNotice("Đang tải ảnh tham chiếu lên hệ thống…");
-        const uploadRes = await uploadImage(source.file, controller.signal);
-        reference_image_name = uploadRes.saved_name;
-        setSourceImageName(reference_image_name);
-      }
-      
-      const renderRequest = {
-        prompt,
-        negative_prompt: negativePrompt,
-        reference_image_name,
-        settings: toPromptRequest(settings, notes),
-        project_name: projectName,
-      };
-
-      const result = await requestRender(renderRequest, controller.signal);
-      if (controller.signal.aborted) return;
-      if (!result.url || !result.name || !result.width || !result.height) {
-        throw new Error("Dịch vụ chưa trả về phối cảnh hợp lệ. Vui lòng thử lại.");
-      }
-      setRenderedImage(result);
-      const newRender: RenderVersion = {
-        id: `render-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        url: result.url,
-        name: result.name,
-        width: result.width,
-        height: result.height,
-        prompt,
-        negativePrompt,
-        settings: { ...settings },
-        notes,
-        projectName,
-        provider: result.provider,
-        model: result.model,
-      };
-      setRenderVersions(curr => [newRender, ...curr].slice(0, 20));
-      setNotice("Dựng thành công. Phối cảnh đã được lưu vào lịch sử.");
-    } catch (err) {
-      if (!controller.signal.aborted)
-        setError(err instanceof Error ? err.message : "Không thể dựng phối cảnh.");
-    } finally {
-      if (renderRef.current === controller) {
-        renderRef.current = null;
-        setIsRendering(false);
-      }
-    }
+      if(!(await persistence.saveProject()))throw new Error("Hãy lưu dự án thành công trước khi dựng ảnh.");
+      if(controller.signal.aborted)return;
+      const result=await requestRender({prompt:data.prompt,negative_prompt:data.negativePrompt,reference_image_name:data.source.saved_name,
+        settings:toPromptRequest(data.settings,data.notes),project_name:data.projectName},controller.signal);
+      if(controller.signal.aborted)return;
+      if(!result.url || !result.name || !result.width || !result.height)throw new Error("Dịch vụ chưa trả về ảnh hợp lệ.");
+      const version:RenderVersion={...result,id:crypto.randomUUID(),createdAt:new Date().toISOString(),prompt:data.prompt,negativePrompt:data.negativePrompt,
+        settings:{...data.settings},notes:data.notes,projectName:data.projectName,source:{...data.source}};
+      setData(current=>({...current,renderVersions:[version,...current.renderVersions],activeRenderId:version.id}));
+      setNotice("Đã dựng ảnh và thêm vào lịch sử. Đang lưu dự án…");
+      window.dispatchEvent(new Event("infrarender-rendered"));
+    } catch(err){if(!controller.signal.aborted)setError(err instanceof Error?err.message:"Không thể dựng phối cảnh.");}
+    finally {if(renderRef.current===controller){renderRef.current=null;setRendering(false);}}
   }
-
-  async function downloadImage() {
-    if (!renderedImage || (downloadRef.current && !downloadRef.current.signal.aborted)) return;
-    const controller = new AbortController();
-    downloadRef.current = controller;
-    setIsDownloading(true);
-    setError("");
+  async function downloadImage(version:RenderVersion|RenderResponse|null=renderedImage) {
+    if(!version || downloadRef.current)return;
+    const controller=new AbortController();downloadRef.current=controller;setDownloading(true);setError("");
     try {
-      const response = await fetch(renderedImage.url, {
-        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30_000)]),
-      });
-      if (!response.ok) throw new Error("Không thể tải phối cảnh về. Vui lòng thử lại.");
-      const blob = await response.blob();
-      if (controller.signal.aborted) return;
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = renderedImage.name;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch {
-      if (!controller.signal.aborted) setError("Không thể tải phối cảnh về. Kiểm tra kết nối rồi thử lại.");
-    } finally {
-      if (downloadRef.current === controller) {
-        downloadRef.current = null;
-        setIsDownloading(false);
-      }
-    }
+      const response=await fetch(version.url,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(30000)])});
+      if(!response.ok)throw new Error("Không thể tải ảnh. Ảnh có thể đã bị xóa trên máy chủ.");
+      const blob=await response.blob();if(controller.signal.aborted)return;
+      const url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=version.name;
+      document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    } catch(err){if(!controller.signal.aborted)setError(err instanceof Error?err.message:"Không thể tải ảnh.");}
+    finally {if(downloadRef.current===controller){downloadRef.current=null;setDownloading(false);}}
   }
-
-  function clearPrompt(mode: "prompt" | "negative") {
-    generationRef.current?.abort();
-    generationRef.current = null;
-    renderRef.current?.abort();
-    renderRef.current = null;
-    setIsGenerating(false);
-    setIsRendering(false);
-    if (mode === "prompt") {
-      setPrompt("");
-      setGeneratedFrom("");
-    } else {
-      setNegativePrompt("");
-    }
-    setActiveVersion(null);
-    setError("");
-    setNotice(mode === "prompt" ? "Đã xóa chỉ dẫn phối cảnh chính." : "Đã xóa nội dung loại trừ.");
+  function restoreRenderVersion(version:RenderVersion) {
+    cancelRequests();clearPreview();setData(current=>restoreRender(current,version));setProjectRevision(v=>v+1);setError("");
+    setNotice(version.source?"Đã mở đúng ảnh gốc, ảnh render và thiết lập của phiên bản.":"Phiên bản cũ không lưu ảnh gốc. Cần chọn lại ảnh để tiếp tục.");
   }
-
-  function deleteVersion(id: string) {
-    setVersions((current) => current.filter((version) => version.id !== id));
-    if (activeVersion === id) setActiveVersion(null);
-    setNotice("Đã xóa phiên bản khỏi chỉ dẫn đã lưu.");
+  function restoreVersion(version:PromptVersion) {
+    cancelRequests();patch({prompt:version.prompt,negativePrompt:version.negativePrompt,settings:{...version.settings},notes:version.notes,
+      activeVersion:version.id,generatedFrom:version.generatedFrom,promptAnalysis:[],promptModel:null});setError("");
+    setNotice("Đã khôi phục prompt và thiết lập. Kiểm tra ảnh gốc trước khi dựng.");
   }
-
-  async function deleteRenderVersion(id: string) {
-    const target = renderVersions.find(r => r.id === id);
-    if (!target) return;
-    setRenderVersions(curr => curr.filter(r => r.id !== id));
-    setNotice("Đã xóa phối cảnh khỏi lịch sử.");
-    if (target.url) {
-        deleteFile(target.url).catch(()=>null);
-    }
+  async function switchProject(id:string,discard=false) {
+    if(isGenerating || isRendering || isUploading)return;
+    if(await persistence.openProject(id,discard)){clearPreview();setProjectRevision(v=>v+1);setError("");setNotice("");}
   }
-
-  function restoreRenderVersion(version: RenderVersion) {
-    generationRef.current?.abort();
-    generationRef.current = null;
-    setIsGenerating(false);
-    renderRef.current?.abort();
-    renderRef.current = null;
-    setIsRendering(false);
-    setPrompt(version.prompt);
-    setNegativePrompt(version.negativePrompt);
-    setSettings(version.settings);
-    setNotes(version.notes);
-    setRenderedImage({
-      status: "success",
-      url: version.url,
-      name: version.name,
-      width: version.width,
-      height: version.height,
-    });
-    setError("");
-    setNotice("Đã khôi phục thông số và ảnh từ phối cảnh đã dựng.");
+  async function resetProject() {
+    if(isGenerating || isRendering || isUploading)return;
+    if(await persistence.newProject()){clearPreview();setProjectRevision(v=>v+1);setError("");setNotice("Dự án trước đã được giữ trong danh sách.");}
   }
-
-
-
-  function restoreVersion(version: PromptVersion) {
-    generationRef.current?.abort();
-    generationRef.current = null;
-    setIsGenerating(false);
-    renderRef.current?.abort();
-    renderRef.current = null;
-    setIsRendering(false);
-    setPrompt(version.prompt);
-    setNegativePrompt(version.negativePrompt);
-    setGeneratedFrom(version.generatedFrom);
-    setActiveVersion(version.id);
-    setError("");
-    setNotice(
-      `Đã mở chỉ dẫn của ảnh "${version.sourceName}". Các thông số hiện tại được giữ nguyên.`,
-    );
-  }
-
-  function resetProject() {
-    if (
-      (source || renderedImage || prompt || negativePrompt || versions.length || notes) &&
-      !window.confirm(
-        "Bắt đầu dự án mới? Ảnh và toàn bộ lịch sử chỉ dẫn trong phiên này sẽ bị xóa. Hãy xuất chỉ dẫn cần giữ lại trước khi tiếp tục.",
-      )
-    )
-      return;
-    changeSource(null);
-    setRenderedImage(null);
-    setPrompt("");
-    setGeneratedFrom("");
-    setActiveVersion(null);
-    setProjectRevision((current) => current + 1);
-    setProjectName("Dự án hạ tầng mới");
-    setSettings({ ...DEFAULT_SETTINGS });
-    setNotes("");
-    setNegativePrompt("");
-    setVersions([]);
-  }
-
-  return {
-    projectName,
-    projectRevision,
-    setProjectName,
-    source,
-    changeSource,
-    settings,
-    setSettings,
-    notes,
-    setNotes,
-    prompt,
-    negativePrompt,
-    setPrompt: (value: string) => {
-      setPrompt(value);
-      setActiveVersion(null);
-    },
-    setNegativePrompt: (value: string) => {
-      setNegativePrompt(value);
-      setActiveVersion(null);
-    },
-    versions,
-    renderVersions,
-    activeVersion,
-    isGenerating,
-    isRendering,
-    isDownloading,
-    renderedImage,
-    error,
-    notice,
-    isStale: Boolean(prompt && generatedFrom && generatedFrom !== currentSignature),
-    generatePrompt,
-    renderImage,
-    downloadImage,
-    clearPrompt,
-    deleteVersion,
-    deleteRenderVersion,
-    restoreRenderVersion,
-    isLoaded,
-    removeRenderedImage: () => {
-      downloadRef.current?.abort();
-      setIsDownloading(false);
-      setRenderedImage(null);
-      setNotice("Đã xóa ảnh render khỏi không gian làm việc.");
-    },
-    restoreVersion,
-    resetProject,
-    saveVersion: () => {
-      if (!prompt.trim()) return;
-      addVersion(prompt);
-      setNotice("Đã lưu phiên bản prompt hiện tại.");
-    },
-    toggleFavorite: (id: string) =>
-      setVersions((current) =>
-        current.map((version) =>
-          version.id === id ? { ...version, favorite: !version.favorite } : version,
-        ),
-      ),
-    exportPrompt: () => downloadPrompt(projectName, prompt, negativePrompt),
+  return {...data,...persistence,source,renderedImage,projectRevision,isUploading,isGenerating,isRendering,isDownloading,error,notice,
+    isStale:Boolean(data.prompt && data.generatedFrom && data.generatedFrom!==currentSignature),
+    setProjectName:(projectName:string)=>patch({projectName}),
+    setSettings:(settings:RenderSettings)=>patch({settings}),
+    setNotes:(notes:string)=>patch({notes}),
+    setPrompt:(prompt:string)=>patch({prompt,activeVersion:null}),
+    setNegativePrompt:(negativePrompt:string)=>patch({negativePrompt,activeVersion:null}),
+    setPromptMode:(promptMode:PromptMode)=>patch({promptMode}),
+    changeSource,generatePrompt,renderImage,downloadImage,restoreRenderVersion,restoreVersion,resetProject,switchProject,
+    reloadProject:()=>{if(persistence.projectId && window.confirm("Mở bản đã lưu trên máy chủ và bỏ các thay đổi chưa lưu trên thiết bị?"))void switchProject(persistence.projectId,true);},
+    deleteCurrentProject:async()=>{if(await persistence.deleteProject()){clearPreview();setProjectRevision(v=>v+1);}},
+    clearPrompt:(mode:"prompt"|"negative")=>{cancelRequests();patch(mode==="prompt"?{prompt:"",generatedFrom:"",activeVersion:null,promptAnalysis:[],promptModel:null}:{negativePrompt:"",activeVersion:null});},
+    deleteVersion:(id:string)=>setData(current=>({...current,versions:current.versions.filter(v=>v.id!==id),activeVersion:current.activeVersion===id?null:current.activeVersion})),
+    deleteRenderVersion:(id:string)=>{setData(current=>({...current,renderVersions:current.renderVersions.filter(v=>v.id!==id),activeRenderId:current.activeRenderId===id?null:current.activeRenderId}));setNotice("Đã bỏ khỏi lịch sử. Tệp không còn được sử dụng sẽ được dọn theo thời hạn lưu trữ.");},
+    removeRenderedImage:()=>patch({activeRenderId:null}),
+    saveVersion:()=>{if(!data.prompt.trim())return;if(data.versions.length>=200){setError("Lịch sử đã đủ 200 prompt.");return;}const version=makeVersion(data.prompt,data.generatedFrom||currentSignature);setData(current=>({...current,versions:[version,...current.versions],activeVersion:version.id}));},
+    toggleFavorite:(id:string)=>setData(current=>({...current,versions:current.versions.map(v=>v.id===id?{...v,favorite:!v.favorite}:v)})),
+    exportPrompt:()=>downloadPrompt(data.projectName,data.prompt,data.negativePrompt),
   };
 }

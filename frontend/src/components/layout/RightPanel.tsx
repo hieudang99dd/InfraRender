@@ -40,7 +40,6 @@ import styles from "./RightPanel.module.css";
 type RightPanelProps = {
   settings: RenderSettings;
   onChange: (settings: RenderSettings) => void;
-  onGenerate: () => void;
   isGenerating: boolean;
   isRendering: boolean;
   canGenerate: boolean;
@@ -162,7 +161,6 @@ function PreservationChoice({
 export default function RightPanel({
   settings,
   onChange,
-  onGenerate,
   isGenerating,
   isRendering,
   canGenerate,
@@ -217,11 +215,11 @@ export default function RightPanel({
   }
 
   return (
-    <aside className={styles.panel} aria-label="Thông số phối cảnh">
+    <aside className={styles.panel} aria-label="Thông số thiết kế">
       <header className={styles.header}>
         <div className={styles.heading}>
           <SlidersHorizontal size={17} aria-hidden="true" />
-          <h2>Thông số phối cảnh</h2>
+          <h2>Thông số thiết kế</h2>
         </div>
         <button
           type="button"
@@ -239,7 +237,7 @@ export default function RightPanel({
         </button>
       </header>
 
-      <fieldset className={styles.settings} disabled={isBusy} aria-label="Thông số phối cảnh">
+      <fieldset className={styles.settings} disabled={isBusy} aria-label="Thông số thiết kế">
         <p className={styles.selectionHint}>
           Chọn thông số hoặc thêm từ khóa riêng. Nhấn lại một lựa chọn để bỏ chọn.
         </p>
@@ -326,16 +324,16 @@ export default function RightPanel({
           {choices("lighting", "Ánh sáng")}
         </SettingSection>
         <SettingSection title="Cây xanh & cảnh quan" icon={<Leaf size={17} />} defaultOpen>
-          <p className={styles.fieldLabel}>Loại cây xanh</p>
-          {choices("vegetation", "Loại cây xanh")}
-          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ cây xanh</p>
-          {choices("vegetation_density", "Mật độ cây xanh")}
+          <p className={styles.fieldLabel}>Loại thảm thực vật</p>
+          {choices("vegetation", "Loại thảm thực vật")}
+          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ phủ xanh</p>
+          {choices("vegetation_density", "Mật độ phủ xanh")}
         </SettingSection>
         <SettingSection title="Giao thông & phương tiện" icon={<Route size={17} />}>
           <p className={styles.fieldLabel}>Loại phương tiện</p>
           {choices("vehicles", "Loại phương tiện")}
-          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ giao thông</p>
-          {choices("vehicles_density", "Mật độ giao thông")}
+          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ phương tiện</p>
+          {choices("vehicles_density", "Mật độ phương tiện")}
           <PreservationChoice
             label="Vạch sơn mặt đường"
             value={settings.preserve_road_markings}
@@ -351,18 +349,19 @@ export default function RightPanel({
         <SettingSection title="Phong cách hình ảnh" icon={<Palette size={17} />}>
           {choices("style", "Phong cách hình ảnh")}
         </SettingSection>
-        <SettingSection title="Bảo toàn hình học & sáng tạo" icon={<ShieldCheck size={17} />}>
+        <SettingSection title="Bảo toàn hình học & Sáng tạo" icon={<ShieldCheck size={17} />}>
+          <p className={styles.fieldLabel}>Mức độ sáng tạo sẽ định hướng Chỉ thị AI; không gửi trực tiếp dưới dạng tham số API gốc.</p>
           <PreservationChoice
             label="Bảo toàn hình khối công trình"
             value={settings.preserve_geometry}
             onChange={(value) => update("preserve_geometry", value)}
           />
           <div className={styles.rangeLabel}>
-            <label htmlFor={`${id}-creativity`}>Mức độ diễn giải sáng tạo (%)</label>
+            <label htmlFor={`${id}-creativity`}>Mức độ tự do sáng tạo (%)</label>
             <button
               type="button"
               className={styles.clear}
-              aria-label="Bỏ chọn mức độ diễn giải"
+              aria-label="Bỏ chọn tự do sáng tạo"
               disabled={settings.creativity === null}
               onClick={() => update("creativity", null)}
             >
@@ -391,7 +390,7 @@ export default function RightPanel({
               <input
                 className={styles.range}
                 type="range"
-                aria-label="Điều chỉnh mức độ diễn giải sáng tạo"
+                aria-label="Điều chỉnh mức độ tự do sáng tạo"
                 min={0}
                 max={100}
                 step={1}
@@ -400,12 +399,12 @@ export default function RightPanel({
               />
               <div className={styles.rangeHints}>
                 <span>Bám sát ảnh gốc</span>
-                <span>Diễn giải sáng tạo</span>
+                <span>Tự do sáng tạo</span>
               </div>
             </>
           )}
         </SettingSection>
-        <SettingSection title="Góc nhìn & góc máy" icon={<Camera size={17} />}>
+        <SettingSection title="Góc nhìn & Phối cảnh" icon={<Camera size={17} />}>
           <label className={styles.fieldLabel} htmlFor={`${id}-camera`}>
             Góc máy mong muốn
           </label>
@@ -425,9 +424,9 @@ export default function RightPanel({
           </select>
         </SettingSection>
         <SettingSection
-          title="Thông số xuất hình"
+          title="Thông số kết xuất"
           icon={<SlidersHorizontal size={17} />}
-          description="Thông số độ phân giải và tỷ lệ được đưa vào chỉ dẫn phối cảnh."
+          description="Áp dụng kích thước tệp thật: 1K cạnh dài 1024, 2K 2560, 4K 3840, 8K 7680 px. Có thể cắt giữa ảnh và phóng lớn; kết quả sẽ ghi rõ. 8K vuông vượt giới hạn 40 MP."
         >
           <p className={styles.fieldLabel}>Độ phân giải</p>
           {choices("quality", "Độ phân giải", true)}

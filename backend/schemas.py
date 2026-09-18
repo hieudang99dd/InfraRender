@@ -24,6 +24,7 @@ AspectRatio = Annotated[
         pattern=r"^(Original|[1-9][0-9]{0,3}:[1-9][0-9]{0,3})$",
     ),
 ]
+MediaName = Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{32}\.(png|jpg|jpeg|webp)$")]
 
 
 class PromptRequest(BaseModel):
@@ -44,7 +45,8 @@ class PromptRequest(BaseModel):
     style: PromptText = ""
     notes: Annotated[str, StringConstraints(max_length=5000)] = ""
     custom_keywords: list[CustomKeyword] = Field(default_factory=list, max_length=20)
-    reference_image_name: str | None = None
+    reference_image_name: MediaName | None = None
+    mode: Literal["template", "refine", "vision"] = "template"
     preserve_geometry: bool | None = None
     preserve_road_markings: bool | None = None
     creativity: int | None = Field(default=None, ge=0, le=100, strict=True)
@@ -74,7 +76,7 @@ class RenderRequest(BaseModel):
 
     prompt: Annotated[str, StringConstraints(strip_whitespace=True, max_length=28000, min_length=1)]
     negative_prompt: Annotated[str, StringConstraints(strip_whitespace=True, max_length=4000)] = ""
-    reference_image_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+    reference_image_name: MediaName
     settings: PromptRequest
     project_name: Annotated[str, StringConstraints(max_length=200)] = "Dự án hạ tầng mới"
 
@@ -82,6 +84,9 @@ class RenderRequest(BaseModel):
 class PromptResponse(BaseModel):
     status: Literal["success"] = "success"
     prompt: str
+    mode: Literal["template", "refine", "vision"] = "template"
+    model: str | None = None
+    analysis: list[str] = Field(default_factory=list)
 
 
 class RenderResponse(BaseModel):
@@ -92,6 +97,17 @@ class RenderResponse(BaseModel):
     height: int
     provider: str
     model: str
+    details: dict = Field(default_factory=dict)
+
+
+class ProjectRequest(BaseModel):
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    workspace: dict
+    revision: int | None = Field(default=None, ge=1)
+
+
+class CleanupRequest(BaseModel):
+    dry_run: bool = True
 
 
 class UploadResponse(BaseModel):

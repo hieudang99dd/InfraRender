@@ -13,9 +13,10 @@ import {
   Trash2,
 } from "lucide-react";
 import styles from "./RenderResult.module.css";
+import type { OutputDetails } from "@/lib/api";
 
 type RenderResultProps = {
-  result: { url: string; name: string; width?: number; height?: number } | null;
+  result: { url: string; name: string; width?: number; height?: number; details?: OutputDetails } | null;
   isRendering: boolean;
   onRemove: () => void;
   onDownload: () => void;
@@ -77,7 +78,7 @@ export default function RenderResult({
       <div className={styles.header}>
         <div className={styles.heading}>
           <Sparkles size={17} aria-hidden="true" />
-          <h2 id={titleId}>Phối cảnh</h2>
+          <h2 id={titleId}>Ảnh Render</h2>
           {result && !isRendering && <span className={styles.resultBadge}>Kết quả</span>}
         </div>
         <div className={styles.actions}>
@@ -200,6 +201,7 @@ export default function RenderResult({
           )
         )}
       </div>
+      {result?.details?.native_size && <p className="output-details">Ảnh AI: {result.details.native_size} → xuất: {result.width} × {result.height}{result.details.upscaled ? " · Đã phóng lớn, không phải độ phân giải AI gốc" : ""}{result.details.cropped ? " · Đã cắt giữa ảnh để đúng tỷ lệ" : ""}</p>}
     </section>
   );
 }

@@ -1,11 +1,20 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import { test } from "node:test";
 import { apiRequest, uploadImage, requestRender } from "./api.ts";
+
+test("API rejects absolute URLs so access tokens cannot leave the backend", async () => {
+  await assert.rejects(apiRequest("https://untrusted.example/api/projects"), /đường dẫn API/i);
+});
+
+test("API errors retain status for conflict handling", async (context) => {
+  context.mock.method(globalThis, "fetch", async () => Response.json({ detail: "Conflict" }, {status:409}));
+  await assert.rejects(apiRequest("/api/projects/a"), error => error.status === 409);
+});
 
 test("API requests preserve caller payload and propagate successful JSON", async (context) => {
   const controller = new AbortController();
   context.mock.method(globalThis, "fetch", async (url, options) => {
-    assert.equal(url, "/api/generate-prompt");
+    assert.match(url, /\/api\/generate-prompt$/);
     assert.equal(options.cache, "no-store");
     assert.equal(options.method, "POST");
     assert.equal(options.body, '{"notes":"test"}');
@@ -22,9 +31,9 @@ test("API requests preserve caller payload and propagate successful JSON", async
 
 test("API validation errors present a readable server message", async (context) => {
   context.mock.method(globalThis, "fetch", async () =>
-    Response.json({ detail: "File ảnh bị hỏng." }, { status: 400 }),
+    Response.json({ detail: "File Ã¡ÂºÂ£nh bÃ¡Â»â€¹ hÃ¡Â»Âng." }, { status: 400 }),
   );
-  await assert.rejects(apiRequest("/api/upload-image"), /File ảnh bị hỏng/);
+  await assert.rejects(apiRequest("/api/upload-image"), /File Ã¡ÂºÂ£nh bÃ¡Â»â€¹ hÃ¡Â»Âng/);
 });
 
 test("structured validation errors use a readable fallback", async (context) => {
@@ -75,27 +84,26 @@ test("uploads send the original File as multipart data without overriding its bo
 });
 
 test("render sends the reference and edited prompts without reapplying settings", async (context) => {
-  const file = new File(["reference bytes"], "street.png", { type: "image/png" });
   context.mock.method(globalThis, "fetch", async (url, options) => {
     assert.match(url, /\/api\/render-image$/);
     assert.equal(options.method, "POST");
-    assert.equal(options.headers, undefined);
-    assert.deepEqual([...options.body.keys()], ["file", "prompt", "negative_prompt"]);
-    assert.equal(await options.body.get("file").text(), "reference bytes");
-    assert.equal(options.body.get("prompt"), "My edited scene.");
-    assert.equal(options.body.get("negative_prompt"), "No billboards.");
+    assert.equal(options.headers["Content-Type"], "application/json");
+    const body = JSON.parse(options.body);
+    assert.equal(body.reference_image_name, "street.png");
+    assert.equal(body.prompt, "My edited scene.");
+    assert.equal(body.negative_prompt, "No billboards.");
     return Response.json({
       status: "success",
       url: "/outputs/test.png",
       name: "test.png",
       width: 1024,
       height: 1024,
+      provider: "OpenAI",
+      model: "gpt-image-2"
     });
   });
   const result = await requestRender(
-    file,
-    "  My edited scene.  ",
-    " No billboards. ",
+    { reference_image_name: "street.png", prompt: "My edited scene.", negative_prompt: "No billboards.", settings: {} },
     new AbortController().signal,
   );
   assert.equal(result.url, "/outputs/test.png");
@@ -103,11 +111,12 @@ test("render sends the reference and edited prompts without reapplying settings"
 
 test("render configuration failure is readable and does not retry", async (context) => {
   const mock = context.mock.method(globalThis, "fetch", async () =>
-    Response.json({ detail: "Chưa cấu hình dịch vụ render." }, { status: 503 }),
+    Response.json({ detail: "Cha cu hAnh d<ch v render." }, { status: 503 }),
   );
   await assert.rejects(
-    requestRender(new File(["image"], "test.png"), "Scene", "", new AbortController().signal),
-    /Chưa cấu hình dịch vụ render/,
+    requestRender({ reference_image_name: "test.png", prompt: "Scene", settings: {} }, new AbortController().signal),
+    /Cha cu hAnh d<ch v render/,
   );
   assert.equal(mock.mock.callCount(), 1);
 });
+

@@ -21,10 +21,10 @@ class ImageProvider(ABC):
         metadata: ImageMetadata,
         prompt: str,
         negative_prompt: str,
-    ) -> tuple[bytes, Any]:
+        size: str = "auto",
+    ) -> tuple[bytes, ImageMetadata, str, str]:
         """
         Render an image using the provider.
-        Returns a tuple of (result_image_bytes, result_metadata_object).
-        The result_metadata_object should have attributes: width, height, provider, model.
+        Returns image bytes, validated dimensions, provider name and model name.
         """
         pass

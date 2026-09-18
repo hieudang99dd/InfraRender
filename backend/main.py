@@ -1,228 +1,228 @@
-"""HTTP API for reference images and infrastructure visualization prompts."""
-
+"""InfraRender API with durable project storage and a separate static frontend."""
+import asyncio
+import hmac
 import logging
 import os
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from uuid import uuid4
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from schemas import PromptRequest, PromptResponse, RenderRequest, RenderResponse, UploadResponse
+from schemas import CleanupRequest, ProjectRequest, PromptRequest, PromptResponse, RenderRequest, RenderResponse, UploadResponse
 from services.image_render import check_render_connection, render_image, render_prompt, render_status
 from services.image_upload import read_image, validate_image
-from services.prompt_builder import build_render_prompt
+from services.project_store import ProjectStore, safe_media_path
+from services.prompt_engine import generate_prompt as create_prompt
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
-UPLOAD_DIR = BASE_DIR / "uploads"
-OUTPUT_DIR = BASE_DIR / "outputs"
+# Preserve existing local images; production sets a mounted persistent volume.
+DATA_DIR = Path(os.getenv("INFRARENDER_DATA_DIR", str(BASE_DIR))).resolve()
+UPLOAD_DIR, OUTPUT_DIR = DATA_DIR / "uploads", DATA_DIR / "outputs"
 PUBLIC_BASE_URL = os.getenv("INFRARENDER_PUBLIC_BASE_URL", "").rstrip("/")
-CORS_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv(
-        "INFRARENDER_CORS_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000",
-    ).split(",")
-    if origin.strip()
-]
-
+CORS_ORIGINS = [v.strip() for v in os.getenv("INFRARENDER_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if v.strip()]
 logger = logging.getLogger(__name__)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+store = ProjectStore(DATA_DIR / "projects.sqlite3", UPLOAD_DIR, OUTPUT_DIR, retention_days=int(os.getenv("INFRARENDER_RETENTION_DAYS", "30")))
+store.initialize()
+provider_slots = asyncio.Semaphore(2)
 
-app = FastAPI(
-    title="InfraRender AI Backend",
-    description="Prepare prompts and render reference images with a configured image provider.",
-    version=VERSION,
-)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    allow_credentials=False,
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
-)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if os.getenv("INFRARENDER_ENV") == "production":
+        if len(os.getenv("INFRARENDER_ACCESS_TOKEN", "")) < 32:
+            raise RuntimeError("Production requires INFRARENDER_ACCESS_TOKEN with at least 32 characters.")
+        if not PUBLIC_BASE_URL.startswith("https://") or not CORS_ORIGINS or "*" in CORS_ORIGINS:
+            raise RuntimeError("Production requires an HTTPS public backend URL and explicit CORS origins.")
+    async def retain_files():
+        while True:
+            await asyncio.sleep(86400)
+            try:
+                await run_in_threadpool(store.cleanup, False)
+            except Exception:
+                logger.exception("Retention sweep failed")
+    task = asyncio.create_task(retain_files())
+    try:
+        yield
+    finally:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+
+app = FastAPI(title="InfraRender AI Backend", version=VERSION, lifespan=lifespan)
+
+
+@app.middleware("http")
+async def api_access(request: Request, call_next):
+    public = {"/", "/health", "/api/health", "/api/render-status"}
+    if request.url.path.startswith("/api/") and request.url.path not in public and request.method != "OPTIONS":
+        token = os.getenv("INFRARENDER_ACCESS_TOKEN", "")
+        supplied = request.headers.get("Authorization", "")
+        if token and not hmac.compare_digest(supplied.encode(), f"Bearer {token}".encode()):
+            return JSONResponse({"detail": "Cần mã truy cập ứng dụng hợp lệ."}, status_code=401)
+    if request.headers.get("content-type", "").startswith("application/json"):
+        body = bytearray()
+        async for chunk in request.stream():
+            body.extend(chunk)
+            if len(body) > 4 * 1024 * 1024:
+                return JSONResponse({"detail": "Dữ liệu dự án vượt quá 4 MiB."}, status_code=413)
+        request._body = bytes(body)
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_credentials=False,
+                   allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], allow_headers=["Content-Type", "Authorization"])
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 app.mount("/outputs", StaticFiles(directory=OUTPUT_DIR), name="outputs")
 
 
 @app.get("/")
-def root() -> dict:
-    return {
-        "status": "ok",
-        "message": "InfraRender AI Backend is running",
-        "version": VERSION,
-    }
+def root():
+    return {"status": "ok", "service": "InfraRender AI Backend", "version": VERSION}
 
 
+@app.get("/health")
 @app.get("/api/health")
-def health() -> dict:
+def health():
     renderer = render_status()
-    return {
-        "status": "ok",
-        "service": "InfraRender AI Backend",
-        "version": VERSION,
-        "capabilities": {
-            "upload": True,
-            "prompt_generation": True,
-            "image_generation": renderer["configured"],
-        },
-        "renderer": renderer,
-    }
+    return {"status": "ok", "service": "InfraRender AI Backend", "version": VERSION,
+            "authentication_required": bool(os.getenv("INFRARENDER_ACCESS_TOKEN")),
+            "capabilities": {"upload": True, "prompt_generation": True, "projects": True,
+                             "image_generation": renderer.get("state") == "rendered"}, "renderer": renderer}
 
 
 @app.get("/api/render-status")
-def get_render_status() -> dict:
-    """Report local configuration without sending an API request or exposing secrets."""
+def get_render_status():
     return render_status()
 
 
 @app.post("/api/render-status/check")
-async def verify_render_connection() -> dict:
-    """Check model access without generating a billable image or returning secrets."""
+async def verify_render_connection():
     return await check_render_connection()
 
 
+def media_url(request: Request, directory: str, name: str):
+    return f"{PUBLIC_BASE_URL}/{directory}/{name}" if PUBLIC_BASE_URL else str(request.url_for(directory, path=name))
+
+
+async def write_media(path: Path, content: bytes):
+    try:
+        await run_in_threadpool(path.write_bytes, content)
+    except OSError as exc:
+        with suppress(OSError):
+            path.unlink(missing_ok=True)
+        logger.error("Media write failed")
+        raise HTTPException(500, "Không thể lưu ảnh trên máy chủ.") from exc
+
+
 @app.post("/api/upload-image", response_model=UploadResponse)
-async def upload_image(request: Request, file: UploadFile = File(...)) -> UploadResponse:
-    """Store a verified JPG, PNG or WEBP reference image, up to 20 MiB."""
+async def upload_image(request: Request, file: UploadFile = File(...)):
     try:
         content = await read_image(file)
-        metadata = await run_in_threadpool(
-            validate_image, content, file.filename, file.content_type
-        )
-        saved_name = f"{uuid4().hex}{metadata.extension}"
-        save_path = UPLOAD_DIR / saved_name
-        try:
-            await run_in_threadpool(save_path.write_bytes, content)
-        except OSError as exc:
-            logger.exception("Failed to save uploaded reference image")
-            try:
-                save_path.unlink(missing_ok=True)
-            except OSError:
-                logger.exception("Failed to remove incomplete image upload")
-            raise HTTPException(
-                status_code=500, detail="Không thể lưu ảnh lên máy chủ."
-            ) from exc
-
-        url = (
-            f"{PUBLIC_BASE_URL}/uploads/{saved_name}"
-            if PUBLIC_BASE_URL
-            else str(request.url_for("uploads", path=saved_name))
-        )
-        return UploadResponse(
-            original_name=file.filename or "image",
-            saved_name=saved_name,
-            size_bytes=len(content),
-            size_mb=round(len(content) / (1024 * 1024), 2),
-            width=metadata.width,
-            height=metadata.height,
-            content_type=metadata.content_type,
-            url=url,
-        )
+        metadata = await run_in_threadpool(validate_image, content, file.filename, file.content_type)
+        name = f"{uuid4().hex}{metadata.extension}"
+        await write_media(UPLOAD_DIR / name, content)
+        return UploadResponse(original_name=file.filename or "image", saved_name=name, size_bytes=len(content),
+                              size_mb=round(len(content) / 1048576, 2), width=metadata.width, height=metadata.height,
+                              content_type=metadata.content_type, url=media_url(request, "uploads", name))
     finally:
         await file.close()
 
 
+async def read_reference(name: str):
+    path = safe_media_path(UPLOAD_DIR, name)
+    if not path.is_file():
+        raise HTTPException(404, "Không tìm thấy ảnh gốc. Vui lòng tải lại ảnh.")
+    if path.stat().st_size > 20 * 1024 * 1024:
+        raise HTTPException(413, "Ảnh gốc vượt quá 20 MiB.")
+    content = await run_in_threadpool(path.read_bytes)
+    metadata = await run_in_threadpool(validate_image, content, name, None)
+    return content, metadata
+
+
 @app.post("/api/generate-prompt", response_model=PromptResponse)
-async def generate_prompt(data: PromptRequest) -> PromptResponse:
-    """Build a prompt from the selected settings using Vision AI if an image is provided."""
-    image_base64 = None
-    mime_type = "image/jpeg"
-    if data.reference_image_name:
-        image_path = UPLOAD_DIR / data.reference_image_name
-        if image_path.is_file():
-            try:
-                import base64
-                content = await run_in_threadpool(image_path.read_bytes)
-                image_base64 = base64.b64encode(content).decode("utf-8")
-                ext = image_path.suffix.lower()
-                if ext == ".png":
-                    mime_type = "image/png"
-                elif ext == ".webp":
-                    mime_type = "image/webp"
-            except Exception as e:
-                logger.warning(f"Could not read reference image for prompt generation: {e}")
-                
-    prompt = await build_render_prompt(data, image_base64, mime_type)
-    return PromptResponse(prompt=prompt)
+async def generate_prompt(data: PromptRequest):
+    content, mime_type = None, "image/png"
+    if data.mode == "vision":
+        if not data.reference_image_name:
+            raise HTTPException(422, "Chọn ảnh gốc trước khi phân tích ảnh bằng AI.")
+        content, metadata = await read_reference(data.reference_image_name)
+        mime_type = metadata.content_type
+    if data.mode == "template":
+        return await create_prompt(data)
+    if provider_slots.locked():
+        raise HTTPException(429, "Máy chủ đang xử lý yêu cầu AI. Hãy thử lại sau.")
+    async with provider_slots:
+        return await create_prompt(data, content, mime_type)
 
 
 @app.post("/api/render-image", response_model=RenderResponse)
-async def create_render(
-    request: Request,
-    data: RenderRequest,
-) -> RenderResponse:
-    """Render the actual source image using the standardized RenderRequest contract."""
-    from services.image_upload import validate_image
-    
-    try:
-        render_prompt(data.prompt, data.negative_prompt)
-        status = render_status()
-        if not status["configured"]:
-            raise HTTPException(503, status["message"])
-            
-        image_path = UPLOAD_DIR / data.reference_image_name
-        if not image_path.is_file():
-            raise HTTPException(404, "Không tìm thấy ảnh tham chiếu trên máy chủ. Vui lòng tải lại ảnh.")
-            
-        content = await run_in_threadpool(image_path.read_bytes)
-        
-        # We don't have the original filename or content type here, but validate_image will infer it
-        metadata = await run_in_threadpool(
-            validate_image, content, data.reference_image_name, "image/jpeg"
-        )
-        result, result_metadata = await render_image(content, metadata, data.prompt, data.negative_prompt)
+async def create_render(request: Request, data: RenderRequest):
+    render_prompt(data.prompt, data.negative_prompt)
+    if not render_status()["configured"]:
+        raise HTTPException(503, render_status()["message"])
+    if provider_slots.locked():
+        raise HTTPException(429, "Máy chủ đang dựng ảnh. Hãy thử lại sau.")
+    async with provider_slots:
+        content, metadata = await read_reference(data.reference_image_name)
+        result, result_metadata, provider_name, model_name, details = await render_image(content, metadata, data.prompt, data.negative_prompt, data.settings)
         name = f"{uuid4().hex}.png"
-        save_path = OUTPUT_DIR / name
-        try:
-            await run_in_threadpool(save_path.write_bytes, result)
-        except OSError as exc:
-            logger.exception("Failed to save generated image")
-            try:
-                save_path.unlink(missing_ok=True)
-            except OSError:
-                logger.exception("Failed to remove incomplete generated image")
-            raise HTTPException(500, "Không thể lưu ảnh kết quả trên máy chủ.") from exc
-        url = (
-            f"{PUBLIC_BASE_URL}/outputs/{name}"
-            if PUBLIC_BASE_URL
-            else str(request.url_for("outputs", path=name))
-        )
-        return RenderResponse(
-            url=url, name=name, width=result_metadata.width, height=result_metadata.height,
-            provider=result_metadata.provider if hasattr(result_metadata, "provider") else "OpenAI",
-            model=result_metadata.model if hasattr(result_metadata, "model") else "gpt-image-2",
-        )
-    finally:
-        pass
+        await write_media(OUTPUT_DIR / name, result)
+    return RenderResponse(url=media_url(request, "outputs", name), name=name, width=result_metadata.width,
+                          height=result_metadata.height, provider=provider_name, model=model_name, details=details)
+
+
+@app.get("/api/projects")
+def list_projects():
+    return {"projects": store.list()}
+
+
+@app.post("/api/projects", status_code=201)
+def create_project(data: ProjectRequest):
+    return store.create(data.name, data.workspace)
+
+
+@app.get("/api/projects/{project_id}")
+def get_project(project_id: str):
+    return store.get(project_id)
+
+
+@app.put("/api/projects/{project_id}")
+def update_project(project_id: str, data: ProjectRequest):
+    if data.revision is None:
+        raise HTTPException(422, "Thiếu phiên bản dự án để kiểm tra xung đột.")
+    return store.update(project_id, data.name, data.workspace, data.revision)
+
+
+@app.delete("/api/projects/{project_id}")
+def delete_project(project_id: str):
+    return store.delete(project_id)
+
 
 @app.delete("/api/files/{directory}/{filename}")
-async def delete_file(directory: str, filename: str) -> dict:
-    if directory not in {"uploads", "outputs"}:
-        raise HTTPException(400, "Thư mục không hợp lệ.")
-    
-    target_dir = UPLOAD_DIR if directory == "uploads" else OUTPUT_DIR
-    file_path = target_dir / filename
-    
-    try:
-        file_path = file_path.resolve()
-        if not str(file_path).startswith(str(target_dir.resolve())):
-            raise ValueError()
-    except (RuntimeError, ValueError):
-        raise HTTPException(400, "Đường dẫn file không hợp lệ.")
-        
-    if not file_path.exists():
-        return {"status": "success"}
-        
-    try:
-        file_path.unlink()
-        return {"status": "success"}
-    except OSError as exc:
-        logger.exception(f"Failed to delete file {file_path}")
-        raise HTTPException(500, "Không thể xóa file trên máy chủ.") from exc
+def delete_file(directory: str, filename: str):
+    return store.delete_file(directory, filename)
+
+
+@app.get("/api/storage")
+def storage_status():
+    return store.stats()
+
+
+@app.post("/api/storage/cleanup")
+def cleanup_storage(data: CleanupRequest):
+    return store.cleanup(data.dry_run)

@@ -1,151 +1,82 @@
-# InfraRender AI Studio · v0.5
+﻿# InfraRenderAI
 
-Không gian phối cảnh hạ tầng bằng tiếng Việt: chọn ảnh tham chiếu, tự chọn bối cảnh,
-biên soạn prompt và render ảnh bằng dịch vụ đã cấu hình. Giao diện tông cam mở thẳng
-vào các vùng ảnh, thiết lập, prompt và kết quả, không còn banner đầu trang.
+Ứng dụng tạo phối cảnh kiến trúc và hạ tầng từ ảnh tham chiếu, với giao diện tiếng Việt. Frontend Next.js chạy trong trình duyệt; backend FastAPI lưu dự án và gọi dịch vụ AI bằng khóa đặt trên máy chủ.
 
-## Chạy dự án
+## Chức năng
 
-Yêu cầu: Node.js 22.18 trở lên, npm và Python 3.11 trở lên.
+- So sánh **Ảnh gốc** và **Ảnh Render**, xem lớn và tải ảnh kết quả.
+- Chọn bối cảnh, giao thông, ánh sáng; bổ sung từ khóa và ghi chú riêng.
+- Tạo prompt tiếng Việt: `template` ghép theo thiết lập, `refine` dùng AI biên tập thiết lập, `vision` dùng AI phân tích ảnh gốc cùng thiết lập. Hai chế độ AI cần provider và có thể phát sinh phí.
+- Gửi kích thước thật tới provider, xử lý ảnh về kích thước/tỷ lệ đã chọn và báo rõ kích thước thực nhận, cắt ảnh hay nội suy. Mức sáng tạo là chỉ dẫn trong prompt, không phải tham số điều khiển riêng của provider.
+- Lưu workspace trong SQLite: tên dự án, ảnh gốc, prompt, thiết lập và lịch sử render. Kiểm tra `revision` tránh ghi đè thay đổi từ cửa sổ khác.
+- Dọn ảnh không còn được dự án tham chiếu sau thời hạn lưu trữ; có API xem trước danh sách dọn dẹp.
 
-Lần đầu, cài các thư viện tại thư mục dự án:
+Backend online, cấu hình provider hợp lệ, truy cập được model và render thành công là các trạng thái khác nhau. Kiểm tra model không tạo ảnh và không chứng minh một lần render thật sẽ thành công.
 
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-cd ../frontend
-npm.cmd ci
-cd ..
-```
+## Chạy trên Windows
 
-Sau đó, chỉ cần chạy một lệnh để mở cả backend và frontend:
+Cần Python 3.11 trở lên và Node.js 22.18 trở lên. Chạy tại thư mục dự án:
 
 ```powershell
-.\start.cmd
+python -m venv backend/.venv
+backend/.venv/Scripts/python.exe -m pip install -r backend/requirements.txt
+npm.cmd --prefix frontend ci
 ```
 
-Mở <http://localhost:3000> khi terminal báo `Ready`. Giữ terminal mở; nhấn `Ctrl+C`
-để dừng các tiến trình do lệnh này tạo. Có thể chạy tệp `start.cmd` bằng đường dẫn đầy
-đủ từ thư mục khác. Script kiểm tra thư viện, chờ API hoạt động, ghi log vào `.run/`
-và giữ nguyên dịch vụ InfraRender đã chạy sẵn. Script không tự cài thư viện hoặc
-đóng ứng dụng đang chiếm cổng.
+Nếu chưa có cấu hình riêng:
 
 ```powershell
-# Chỉ kiểm tra môi trường, không mở dịch vụ.
-.\start.cmd -Check
-
-# Khởi động, kiểm tra backend và proxy rồi dừng các tiến trình vừa tạo.
-.\start.cmd -SmokeTest
-
-# Đổi cổng nếu đang có ứng dụng khác sử dụng.
-.\start.cmd -BackendPort 8001 -FrontendPort 3001
+Copy-Item backend/.env.example backend/.env
+Copy-Item frontend/.env.example frontend/.env.local
 ```
 
-Trình duyệt gọi `/api` trên cùng địa chỉ với frontend; máy chủ Next.js chuyển tiếp
-tới backend. Vì vậy, khi mở frontend từ điện thoại/máy khác trong LAN, API và ảnh
-không trỏ về `localhost` của thiết bị đó. Dùng địa chỉ IP của máy chạy dự án, ví dụ
-`http://192.168.1.10:3000`, và cho phép cổng frontend trong mạng nội bộ nếu cần.
-
-Để chạy riêng từng dịch vụ, mở hai terminal tại thư mục dự án:
+Điền `OPENAI_API_KEY` trong `backend/.env` để dùng AI. Không đưa khóa vào frontend hoặc Git.
 
 ```powershell
-# Terminal backend
-cd backend
-.\.venv\Scripts\python.exe -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+./start.cmd
 ```
+
+Mở [http://localhost:3000](http://localhost:3000). Backend mặc định tại `http://127.0.0.1:8000`. Launcher kiểm tra dịch vụ sẵn có, chỉ dừng tiến trình nó tự khởi động và lưu log trong `.run/`.
 
 ```powershell
-# Terminal frontend
-cd frontend
-npm.cmd run dev
+powershell -NoProfile -ExecutionPolicy Bypass -File ./start.ps1 -Check
+powershell -NoProfile -ExecutionPolicy Bypass -File ./start.ps1 -SmokeTest
 ```
 
-Khi chạy riêng frontend, đặt `INFRARENDER_API_URL` trong `frontend/.env.local` nếu
-backend dùng địa chỉ khác; xem `.env.example`. Đây là biến chỉ dùng trên máy chủ,
-mặc định `http://127.0.0.1:8000`. Khởi động lại frontend sau khi đổi. Tên cũ
-`NEXT_PUBLIC_API_URL` chỉ được đọc làm giá trị dự phòng để tương thích cấu hình cũ.
-Lệnh `start.cmd` luôn trỏ frontend mới khởi động tới backend cục bộ theo `BackendPort`.
-Frontend đã chạy sẵn giữ cấu hình hiện tại; cần dừng và khởi động lại để đổi backend.
+Xem [hướng dẫn phát triển](docs/development.md) để chạy riêng từng dịch vụ và chọn cổng khác.
 
-Nếu trang vẫn báo mất kết nối, kiểm tra <http://localhost:3000/api/health> và log
-`.run/`. Backend có thể hoạt động để tạo prompt ngay cả khi chưa cấu hình dịch vụ
-render. Thiếu `OPENAI_API_KEY` là lỗi cấu hình render riêng, không phải mất kết nối
-giữa frontend và backend.
+## Lưu trữ và phạm vi sử dụng
 
-## Cấu hình render
+Mặc định dữ liệu nằm trong `backend/projects.sqlite3`, `backend/uploads/` và `backend/outputs/`. `INFRARENDER_DATA_DIR` chuyển cả ba vào thư mục khác; Docker dùng `/data` và cần volume bền vững. Ảnh còn được bất kỳ dự án nào tham chiếu được giữ lại. Ảnh không được tham chiếu và có tuổi file quá 30 ngày được xét dọn mỗi ngày; có thể đổi thời hạn bằng biến môi trường.
 
-Sao chép `backend/.env.example` thành `backend/.env`, đặt `OPENAI_API_KEY`, rồi khởi
-động lại backend. Model mặc định là `gpt-image-2`; có thể cấu hình
-`OPENAI_IMAGE_MODEL` và `OPENAI_BASE_URL` cho dịch vụ tương thích OpenAI Images.
-API key chỉ nằm ở backend, không đưa vào frontend hoặc biến `NEXT_PUBLIC_*`.
+Bản triển khai dành cho một cá nhân hoặc nhóm tin cậy dùng chung kho dự án. Token ứng dụng bảo vệ API thao tác nhưng chưa có tài khoản hay phân quyền theo người dùng. URL ảnh có tên ngẫu nhiên vẫn đọc được công khai bởi người biết URL; đây không phải kho ảnh riêng tư theo tài khoản.
 
-Nhấn **Kiểm tra kết nối render** để kiểm tra khả năng truy cập thông tin model qua
-provider (`POST /api/render-status/check`). Kiểm tra không tạo ảnh và không gửi ảnh
-hoặc prompt. Giao diện phân biệt thiếu cấu hình, chưa kiểm tra, kết nối thành công,
-key bị từ chối, model không khả dụng, giới hạn tài khoản và lỗi mạng. Kết quả được
-giữ trong bộ nhớ backend tối đa 5 phút; `GET /api/render-status` chỉ đọc trạng thái.
-Kiểm tra thành công chưa bảo đảm quyền tạo ảnh hay hạn mức; một số provider không
-có API thông tin model vẫn có thể render. Khi thiếu key, xem ảnh và tạo prompt vẫn
-hoạt động. Môi trường hiện tại chưa có API key để xác minh render thật.
-
-## Chức năng hiện có
-
-- Xem ảnh JPG, PNG hoặc WEBP; kéo thả, thay/xóa, phóng to và toàn màn hình. Giới hạn 20 MB và 40 MP.
-- Lưu ảnh lên máy chủ qua thao tác riêng; chọn ảnh chỉ tạo bản xem trước trên thiết bị.
-- Tất cả thiết lập ban đầu để trống. Người dùng chọn độc lập thời tiết, ánh sáng, loại công trình/cây xanh/phương tiện, camera, hình khối và thông số đầu ra; chọn một mục không tự đổi mục khác.
-- **Từ khóa tùy chỉnh** trong thiết lập bối cảnh cho phép thêm mô tả tự do bằng Enter hoặc nút **Thêm**, không phụ thuộc danh sách có sẵn. Có thể xóa từng từ khóa; tối đa 20 cụm, mỗi cụm 120 ký tự. Dấu phẩy được giữ nguyên trong cụm; khoảng trắng được chuẩn hóa, cụm trùng bị bỏ qua. Các cụm được đưa vào prompt theo thứ tự thêm khi nhấn **Tạo prompt**. **Xóa thiết lập** xóa cả từ khóa và nội dung đang nhập.
-- Mật độ công trình, cây xanh và phương tiện là các lựa chọn riêng, không bắt buộc chọn loại đối tượng trước.
-- Prompt được tổng hợp **bằng tiếng Việt** khi nhấn **Tạo prompt**, gồm các lựa chọn có sẵn, từ khóa riêng và ghi chú. Nội dung tự nhập được giữ nguyên. Có thể chỉnh sửa, xóa, sao chép và xuất tệp UTF-8.
-- Xem lại, yêu thích, xóa từng phiên bản; giữ tối đa 20 phiên bản trong phiên làm việc. Khôi phục chỉ mở prompt chính và nội dung loại trừ, giữ nguyên ảnh, thiết lập và ghi chú hiện tại.
-- **Render ảnh** gửi ảnh tham chiếu thật và đúng prompt đã chỉnh sửa tới dịch vụ cấu hình; chỉ nối thêm nội dung loại trừ nếu được nhập. Backend không tự tạo lại prompt hoặc áp lại thiết lập.
-- Xem và tải ảnh render xuống; xóa ảnh kết quả khỏi không gian làm việc khi không cần giữ trên trang.
-- Vùng so sánh **Ảnh gốc / Ảnh Render** đặt hai ảnh cạnh nhau, cùng kích thước khung và hiển thị trọn ảnh. Trên điện thoại, hai ảnh xếp dọc. Thay hoặc xóa ảnh gốc sẽ gỡ kết quả cũ khỏi vùng so sánh để tránh đối chiếu nhầm; tệp trên máy chủ vẫn được giữ.
-- Bố cục hai cột trên desktop; thiết lập nằm cạnh vùng so sánh và prompt. Trên tablet và điện thoại, các vùng xếp theo thứ tự thao tác.
-
-API tạo prompt tổng hợp văn bản từ các lựa chọn và ghi chú; đây không phải bước
-phân tích ảnh bằng mô hình thị giác. Bước render riêng mới gửi ảnh và prompt tới
-provider. Thông số độ phân giải/tỷ lệ nếu được chọn được đưa vào prompt, không phải
-cam kết kích thước ảnh trả về.
-
-Prompt, lịch sử và trạng thái hiển thị kết quả nằm trong bộ nhớ trang và mất khi tải
-lại. Xuất prompt hoặc tải ảnh xuống để giữ nội dung. Ảnh đã lưu nằm trong
-`backend/uploads/`, ảnh render nằm trong `backend/outputs/`. Xóa ảnh khỏi giao diện
-hoặc tạo dự án mới không xóa các tệp trên máy chủ.
-
-## Cấu trúc
-
-```text
-frontend/src/
-  app/                  Trang chính, bố cục và design tokens
-  components/           Thành phần giao diện theo chức năng
-  hooks/useWorkspace.ts Trạng thái dự án và điều phối yêu cầu
-  lib/                  API client, thiết lập, phiên bản và kiểm thử
-backend/
-  main.py               Routes và cấu hình dịch vụ
-  schemas.py            Kiểu dữ liệu và validation
-  services/             Kiểm tra ảnh, xây dựng prompt và gọi dịch vụ render
-  tests/                Kiểm thử API
-```
-
-## Kiểm tra
+## Kiểm tra mã nguồn
 
 ```powershell
-cd frontend
-npm.cmd run lint
-npm.cmd run typecheck
-npm.cmd test
-npm.cmd run format:check
-npm.cmd run build
+npm.cmd --prefix frontend test
+npm.cmd --prefix frontend run lint
+npm.cmd --prefix frontend run typecheck
+npm.cmd --prefix frontend run build
+Push-Location backend
+./.venv/Scripts/python.exe -m unittest discover -s tests -v
+Pop-Location
 ```
 
-```powershell
-cd backend
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
-```
+Test provider dùng phản hồi mô phỏng, không thay thế một lần tạo prompt/render thật bằng tài khoản đã cấu hình.
 
-Kiểm thử renderer dùng HTTP mock, không gọi API có phí. Chưa kiểm thử render thật
-với provider vì chưa có API key; cần key có quyền truy cập model để xác minh toàn bộ
-quy trình ngoài môi trường mock.
+## Triển khai
 
-Xem [hướng dẫn frontend](frontend/README.md) và [hợp đồng API](backend/README.md) để phát triển tiếp.
+Mục tiêu frontend: [https://hieudang99dd.github.io/InfraRender/](https://hieudang99dd.github.io/InfraRender/). GitHub Pages chỉ phục vụ frontend tĩnh. Backend chạy riêng trên máy chủ Python có HTTPS và ổ lưu trữ bền vững.
+
+Workflow Pages cần repository variable `NEXT_PUBLIC_INFRARENDER_API_URL` chứa URL HTTPS của backend. Khóa provider và `INFRARENDER_ACCESS_TOKEN` chỉ cấu hình tại backend, không đưa vào biến public hoặc bundle trình duyệt.
+
+**Chưa xác nhận triển khai production:** cần URL backend thật, bí mật cấu hình tại máy chủ, bật Pages và kiểm tra toàn bộ luồng từ trình duyệt. Xem [hướng dẫn triển khai](docs/deployment.md).
+
+## Tài liệu
+
+- [Kiến trúc](docs/architecture.md)
+- [API và giới hạn dữ liệu](docs/api-contract.md)
+- [Phát triển và kiểm thử](docs/development.md)
+- [Triển khai và khôi phục](docs/deployment.md)
+- [Quy tắc cho agent](AGENTS.md)

@@ -8,6 +8,8 @@ export default function BackendStatus() {
   const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
   const [attempt, setAttempt] = useState(0);
   const [message, setMessage] = useState("");
+  const [renderLabel, setRenderLabel] = useState("Render: chưa kiểm tra");
+  const [renderReady, setRenderReady] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -23,13 +25,17 @@ export default function BackendStatus() {
           setStatus(health.status === "ok" ? "online" : "offline");
           setMessage(
             health.status === "ok"
-              ? "Hệ thống xử lý đã kết nối. Sẵn sàng soạn chỉ dẫn và dựng phối cảnh."
+              ? `Backend đã kết nối. ${health.renderer?.message || ""}`
               : "Hệ thống xử lý chưa sẵn sàng.",
           );
+          setRenderReady(health.renderer?.state === "rendered");
+          setRenderLabel(health.renderer?.state === "rendered" ? "Render: đã chạy thành công" : health.renderer?.state === "connected" ? "Render: đã xác minh model" : health.renderer?.configured ? "Render: chưa xác minh" : "Render: chưa cấu hình");
         }
       } catch (error) {
         if (!controller.signal.aborted) {
           setStatus("offline");
+          setRenderReady(false);
+          setRenderLabel("Render: chưa kết nối");
           setMessage(error instanceof Error ? error.message : "Chưa kết nối được hệ thống xử lý.");
         }
       } finally {
@@ -39,17 +45,19 @@ export default function BackendStatus() {
     void check();
     const interval = window.setInterval(check, 30_000);
     window.addEventListener("online", check);
+    window.addEventListener("infrarender-rendered", check);
     return () => {
       controller.abort();
       window.clearInterval(interval);
       window.removeEventListener("online", check);
+      window.removeEventListener("infrarender-rendered", check);
     };
   }, [attempt]);
 
   const labels = {
     checking: "Đang kết nối",
-    online: "Hệ thống đã kết nối",
-    offline: "Hệ thống chưa kết nối",
+    online: "Backend: đã kết nối",
+    offline: "Backend: mất kết nối",
   };
   return (
     <button
@@ -67,6 +75,7 @@ export default function BackendStatus() {
       <span className="connection-label" aria-live="polite">
         {labels[status]}
       </span>
+      <span className={`render-status-label ${renderReady ? "ready" : "pending"}`}>{renderLabel}</span>
       <RefreshCw size={12} className={status === "checking" ? "spin" : ""} />
     </button>
   );

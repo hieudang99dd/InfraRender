@@ -3,6 +3,9 @@
 from fastapi import HTTPException
 from services.image_upload import ImageMetadata
 from services.providers.openai_provider import OpenAIImageProvider
+from schemas import PromptRequest
+from services.output_dimensions import plan_output, process_output
+from fastapi.concurrency import run_in_threadpool
 
 # Create a singleton instance of the provider
 # In the future, this could be resolved based on user config
@@ -30,5 +33,12 @@ async def render_image(
     metadata: ImageMetadata,
     prompt: str,
     negative_prompt: str,
+    settings: PromptRequest | None = None,
 ):
-    return await provider.render_image(image, metadata, prompt, negative_prompt)
+    settings = settings or PromptRequest()
+    plan = plan_output(metadata, settings.quality, settings.aspect_ratio, provider.get_status()["model"])
+    content, native_meta, provider_name, model = await provider.render_image(image, metadata, prompt, negative_prompt, size=plan.provider_size)
+    content, final_meta, details = await run_in_threadpool(process_output, content, native_meta, plan)
+    if len(content) > 32 * 1024 * 1024:
+        raise HTTPException(502, "Ảnh đầu ra vượt quá 32 MiB. Chọn độ phân giải nhỏ hơn.")
+    return content, final_meta, provider_name, model, details

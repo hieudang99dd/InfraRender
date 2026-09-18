@@ -1,13 +1,6 @@
 """Create consistent visualization prompts from the API's validated settings."""
 
-import os
-import json
-import logging
-import asyncio
-import httpx
 from schemas import PromptRequest
-
-logger = logging.getLogger(__name__)
 
 SCENE_FIELDS = (
     ("infrastructure", "Hạ tầng"),
@@ -99,17 +92,24 @@ def build_rule_based_prompt(data: PromptRequest) -> str:
     preservation = []
     if data.creativity is not None:
         c = data.creativity
+        preservation.append(f"Mức sáng tạo: {c}/100 (định hướng bằng prompt).")
         if c <= 20:
-            preservation.append("Bảo toàn tuyệt đối hình học, góc nhìn, tỷ lệ công trình và tương quan không gian hiện trạng.")
+            preservation.append(
+                "Ưu tiên điều chỉnh tiết chế về vật liệu và cảnh quan."
+                if data.preserve_geometry is False
+                else "Ưu tiên bám sát hình học, góc nhìn, tỷ lệ công trình và tương quan không gian hiện trạng."
+            )
         elif c <= 50:
             preservation.append("Bảo toàn cấu trúc chính của không gian, cho phép thay đổi vật liệu và cảnh quan có kiểm soát.")
         elif c <= 80:
             preservation.append("Cho phép diễn giải sáng tạo về kiến trúc và cảnh quan, nhưng giữ nguyên cấu trúc mạng lưới giao thông.")
         else:
-            preservation.append("Tái diễn giải mạnh mẽ toàn bộ không gian để đạt hiệu quả thẩm mỹ cao nhất, vẫn nhận diện được bối cảnh gốc.")
+            preservation.append("Tái diễn giải mạnh mẽ trong phạm vi các ràng buộc bảo toàn đã chọn, vẫn nhận diện được bối cảnh gốc.")
             
     if data.preserve_geometry is True:
         preservation.append("Bắt buộc giữ nguyên bố trí địa hình và các nút giao.")
+    elif data.preserve_geometry is False:
+        preservation.append("Cho phép điều chỉnh có chủ đích hình học và bố cục không gian; duy trì mạng lưới giao thông hợp lý, liên thông.")
     if data.preserve_road_markings is True:
         preservation.append("Bắt buộc giữ nguyên hệ thống vạch kẻ đường hiện trạng.")
     elif data.preserve_road_markings is False:
@@ -175,76 +175,3 @@ def build_rule_based_prompt(data: PromptRequest) -> str:
         layers.append(f"Ghi chú bổ sung: {data.notes}")
 
     return "\n".join(layers)
-
-
-async def build_render_prompt(data: PromptRequest, image_base64: str | None = None, mime_type: str = "image/jpeg") -> str:
-    """Build a prompt using Vision AI if an image is provided, fallback to rule-based."""
-    rule_based_prompt = build_rule_based_prompt(data)
-    
-    if not image_base64:
-        return rule_based_prompt
-
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").strip().rstrip("/")
-    vision_model = os.getenv("OPENAI_VISION_MODEL", "gpt-4o-mini").strip()
-
-    if not api_key or not base_url:
-        return rule_based_prompt
-
-    system_prompt = (
-        "Bạn là một chuyên gia kiến trúc, quy hoạch và thiết kế cảnh quan. "
-        "Nhiệm vụ của bạn là phân tích bức ảnh được cung cấp (về hạ tầng, đường sá, không gian, vật liệu hiện tại) "
-        "và kết hợp với các yêu cầu cài đặt của người dùng để viết ra một câu lệnh (prompt) duy nhất bằng tiếng Việt "
-        "để truyền vào AI sinh ảnh (Image Generation AI). "
-        "Prompt của bạn phải thật chuyên nghiệp, mô tả chi tiết vật liệu, ánh sáng, góc nhìn, và không gian bối cảnh. "
-        "Bạn không được trò chuyện hay giải thích gì thêm, chỉ xuất ra nội dung prompt."
-    )
-
-    user_instructions = f"Dưới đây là các thiết lập người dùng đã chọn:\n\n{rule_based_prompt}\n\nHãy phân tích ảnh và sinh ra prompt mô tả chi tiết bối cảnh mới dựa trên những thiết lập này."
-
-    payload = {
-        "model": vision_model,
-        "messages": [
-            {
-                "role": "system",
-                "content": system_prompt
-            },
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": user_instructions
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:{mime_type};base64,{image_base64}"
-                        }
-                    }
-                ]
-            }
-        ],
-        "max_tokens": 1000,
-        "temperature": 0.7,
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.post(
-                f"{base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json=payload
-            )
-            response.raise_for_status()
-            result = response.json()
-            ai_prompt = result["choices"][0]["message"]["content"].strip()
-            if ai_prompt:
-                return ai_prompt
-    except Exception as exc:
-        logger.warning(f"Vision AI prompt generation failed, falling back to rule-based: {exc}")
-    
-    return rule_based_prompt

@@ -1,4 +1,7 @@
 import type { RenderSettings } from "./render-settings";
+import type { OutputDetails } from "./api";
+
+export type StoredSource = { saved_name: string; url: string; name: string; size: string; resolution: string };
 
 export type PromptVersion = {
   id: string;
@@ -26,6 +29,8 @@ export type RenderVersion = {
   projectName: string;
   provider: string;
   model: string;
+  source?: StoredSource | null;
+  details?: OutputDetails;
 };
 
 export function promptSignature(settings: RenderSettings, notes: string, sourceId: string | null) {

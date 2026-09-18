@@ -123,6 +123,9 @@ class OpenAIImageProvider(ImageProvider):
         return {
             "configured": config.configured,
             "provider": PROVIDER_NAME,
+            "model": config.model,
+            "ready": state == "rendered",
+            "verification_kind": "render" if state == "rendered" else "model" if state == "connected" else None,
             "state": state,
             "message": message,
             "checked_at": checked_at,
@@ -163,11 +166,13 @@ class OpenAIImageProvider(ImageProvider):
                         payload = json.loads(body)
                         if not isinstance(payload, dict) or payload.get("id") != config.model:
                             raise ValueError("Invalid model")
-            return self._record_status(config, "connected", "Kết nối thành công.")
-        except Exception:
-            return self._record_status(config, "provider_error", "Lỗi kết nối.")
+            return self._record_status(config, "connected", "Đã xác minh quyền truy cập model. Chưa kiểm chứng bằng một lần render.")
+        except (TimeoutError, httpx.TimeoutException):
+            return self._record_status(config, "timeout", "Kiểm tra model quá thời gian. Hãy thử lại.")
+        except (httpx.RequestError, ValueError, TypeError):
+            return self._record_status(config, "provider_error", "Không thể xác minh model với dịch vụ.")
 
-    async def render_image(self, image_content: bytes, metadata: ImageMetadata, prompt: str, negative_prompt: str):
+    async def render_image(self, image_content: bytes, metadata: ImageMetadata, prompt: str, negative_prompt: str, size: str = "auto"):
         config = self._get_config()
         if not config.configured:
             raise HTTPException(503, self.get_status()["message"])
@@ -180,10 +185,11 @@ class OpenAIImageProvider(ImageProvider):
                     async with client.stream(
                         "POST", f"{config.base_url}/images/edits",
                         headers={"Authorization": f"Bearer {config.api_key}"},
-                        data={"model": config.model, "prompt": combined_prompt, "n": "1", "output_format": "png"},
+                        data={"model": config.model, "prompt": combined_prompt, "n": "1", "output_format": "png", "size": size},
                         files={"image[]": (f"reference{metadata.extension}", image_content, metadata.content_type)},
                     ) as response:
                         if not response.is_success:
+                            self._record_status(config, *_provider_connection_issue(response.status_code))
                             raise provider_error(response.status_code)
                         body = bytearray()
                         async for chunk in response.aiter_bytes(chunk_size=64 * 1024):
@@ -191,9 +197,11 @@ class OpenAIImageProvider(ImageProvider):
                             if len(body) > MAX_PROVIDER_RESPONSE_BYTES:
                                 raise HTTPException(502, "Kết quả vượt quá giới hạn.")
             content, result_meta = await run_in_threadpool(decode_render, bytes(body))
-            # Tag the metadata with provider info
-            result_meta.provider = PROVIDER_NAME
-            result_meta.model = config.model
-            return content, result_meta
-        except asyncio.TimeoutError:
+            self._record_status(config, "rendered", "Render engine đã tạo ảnh thành công.")
+            return content, result_meta, PROVIDER_NAME, config.model
+        except (asyncio.TimeoutError, httpx.TimeoutException):
+            self._record_status(config, "timeout", "Dựng ảnh quá thời gian. Kiểm tra trước khi gửi lại để tránh phát sinh phí trùng.")
             raise HTTPException(504, "Quá thời gian.")
+        except httpx.RequestError:
+            self._record_status(config, "provider_error", "Không thể kết nối dịch vụ tạo ảnh.")
+            raise HTTPException(502, "Lỗi kết nối.")
