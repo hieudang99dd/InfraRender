@@ -1,4 +1,4 @@
-import { Box, LogOut, FilePlus, Save, Trash2, Archive } from "lucide-react";
+﻿import { Box, LogOut, FilePlus, Save, Trash2, Archive, ChevronDown } from "lucide-react";
 import type { useWorkspace } from "@/hooks/useWorkspace";
 import { setAccessToken } from "@/lib/api";
 
@@ -31,78 +31,125 @@ export default function Header({ workspace: w }: HeaderProps) {
           </span>
         </a>
 
-        <div className="unified-project-controls" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <select 
-            className="input"
-            style={{ width: 'auto', minWidth: '150px', padding: '0.4rem 0.5rem', height: '34px', fontSize: '0.85rem' }}
-            value={w.projectId || ""} 
-            disabled={busy} 
-            onChange={e => { if(e.target.value) void w.switchProject(e.target.value); }}
+        {/* Cá»¥m Chá»n & Äá»•i tÃªn dá»± Ã¡n há»£p nháº¥t (Capsule) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div 
+            style={{ 
+              display: 'flex', alignItems: 'center', 
+              background: 'var(--surface-2)', 
+              borderRadius: '8px', 
+              border: '1px solid var(--border)',
+              transition: 'border-color 0.2s',
+              height: '36px'
+            }}
+            onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+            onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
           >
-            {!w.projectId && <option value="">Bản nháp mới</option>}
-            {w.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-
-          <div style={{ position: 'relative' }}>
             <input
-              className="input"
-              style={{ width: '180px', padding: '0.4rem 0.5rem', height: '34px', fontSize: '0.85rem' }}
-              aria-label="Tên dự án"
+              style={{ 
+                width: '220px', 
+                padding: '0 0.75rem', 
+                fontSize: '0.9rem', 
+                fontWeight: 600,
+                color: 'var(--foreground)',
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                height: '100%'
+              }}
               value={w.projectName}
               maxLength={70}
               disabled={busy}
               onChange={(event) => w.setProjectName(event.target.value)}
-              onBlur={() => {
-                if (!w.projectName.trim()) w.setProjectName("Dự án chưa đặt tên");
-              }}
-              placeholder="Nhập tên..."
+              onBlur={() => { if (!w.projectName.trim()) w.setProjectName("Dá»± Ã¡n chÆ°a Ä‘áº·t tÃªn"); }}
+              placeholder="TÃªn dá»± Ã¡n..."
+              title="Báº¥m Ä‘á»ƒ Ä‘á»•i tÃªn dá»± Ã¡n"
             />
+            
+            <div style={{ width: '1px', height: '20px', background: 'var(--border)' }}></div>
+            
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '36px', height: '100%', justifyContent: 'center' }}>
+              <select 
+                title="Danh sÃ¡ch dá»± Ã¡n Ä‘Ã£ lÆ°u"
+                style={{ 
+                  appearance: 'none',
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0,
+                  cursor: 'pointer'
+                }}
+                value={w.projectId || ""} 
+                disabled={busy} 
+                onChange={e => { if(e.target.value) void w.switchProject(e.target.value); }}
+              >
+                {!w.projectId && <option value="">-- Báº£n nhÃ¡p má»›i --</option>}
+                {w.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <ChevronDown size={16} color="var(--muted)" style={{ pointerEvents: 'none' }} />
+            </div>
           </div>
+
+          {/* NÃºt xÃ³a lÃ m má», áº©n mÃ¬nh, chá»‰ Ä‘á» lÃªn khi hover */}
+          {w.projectId && (
+            <button 
+              className="button button-text" 
+              onClick={() => void w.deleteCurrentProject()} 
+              disabled={busy} 
+              title="XÃ³a dá»± Ã¡n nÃ y" 
+              style={{ 
+                padding: '0 6px', 
+                color: 'var(--muted)', 
+                opacity: 0.5,
+                transition: 'all 0.2s',
+                height: '36px'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.opacity = '1'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.opacity = '0.5'; }}
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
         </div>
       </div>
 
       <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
-        {w.saveError && <span className="save-status error" style={{ fontSize: '0.8rem', color: 'var(--color-danger)' }}>{w.saveError}</span>}
+        {w.saveError && <span className="save-status error" style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>{w.saveError}</span>}
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span className="save-status" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-            {w.isUploading ? "Đang lưu ảnh…" : w.saveState}
+          <span className="save-status" style={{ fontSize: '0.8rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+            {w.isUploading ? "Äang lÆ°u áº£nhâ€¦" : w.saveState}
           </span>
         </div>
 
-        <button className="button button-secondary" onClick={w.resetProject} disabled={busy} title="Làm mới không gian làm việc (Tạo mới)">
-          <FilePlus size={15} /> <span>Làm mới</span>
+        <button className="button button-secondary" onClick={w.resetProject} disabled={busy} title="LÃ m má»›i khÃ´ng gian lÃ m viá»‡c (Táº¡o má»›i)">
+          <FilePlus size={15} /> <span>LÃ m má»›i</span>
         </button>
 
-        <button className="button button-secondary" onClick={() => void w.saveProject()} disabled={busy || w.conflict} title="Lưu dự án hiện tại">
-          <Save size={15} /> <span>Lưu</span>
+        <button className="button button-secondary" onClick={() => void w.saveProject()} disabled={busy || w.conflict} title="LÆ°u dá»± Ã¡n hiá»‡n táº¡i">
+          <Save size={15} /> <span>LÆ°u</span>
         </button>
-        
-        {w.projectId && (
-          <button className="button button-text danger-text" onClick={() => void w.deleteCurrentProject()} disabled={busy} title="Xóa dự án này" style={{ padding: '0 8px' }}>
-            <Trash2 size={15} />
-          </button>
-        )}
 
         <div className="export-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', borderLeft: '1px solid var(--border)', paddingLeft: '12px', marginLeft: '4px' }}>
           <button
             className="button button-primary"
             disabled={busy || w.isExporting || !hasData}
             onClick={() => void w.exportProject()}
-            title="Xuất thư mục ZIP dự án"
+            title="Xuáº¥t thÆ° má»¥c ZIP dá»± Ã¡n"
           >
             <Archive size={15}/> 
-            <span>{w.isExporting ? "Đang đóng gói…" : "Xuất ZIP"}</span>
+            <span>{w.isExporting ? "Äang Ä‘Ã³ng gÃ³iâ€¦" : "Xuáº¥t ZIP"}</span>
           </button>
           {w.isExporting && exportLabel && (
-            <span className="export-progress" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', position: 'absolute', top: '100%', right: '20px', background: 'var(--surface)', padding: '2px 6px', border: '1px solid var(--border)', borderRadius: '4px' }}>{exportLabel}</span>
+            <span className="export-progress" style={{ fontSize: '0.8rem', color: 'var(--muted)', position: 'absolute', top: '100%', right: '20px', background: 'var(--surface)', padding: '2px 6px', border: '1px solid var(--border)', borderRadius: '4px' }}>{exportLabel}</span>
           )}
         </div>
 
         <button 
           className="button button-text" 
           onClick={() => { setAccessToken(""); window.location.reload(); }}
-          title="Đăng xuất"
+          title="ÄÄƒng xuáº¥t"
           style={{ padding: '0 8px' }}
         >
           <LogOut size={16} />
