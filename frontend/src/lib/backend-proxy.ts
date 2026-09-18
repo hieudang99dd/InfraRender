@@ -78,7 +78,8 @@ export async function proxyBackend(request: Request, segments: string[]): Promis
   const path = segments.join("/");
   const file = path.startsWith("files/") ? path.slice(6) : "";
   const isFile = FILE_PATH.test(file);
-  const method = isFile ? "GET" : ROUTES[path];
+  const isDeleteFile = isFile && request.method === "DELETE";
+  const method = isFile ? (isDeleteFile ? "DELETE" : "GET") : ROUTES[path];
   if (!method) return failure("Không tìm thấy chức năng này.", 404);
   if (request.method !== method) return failure("Phương thức không được hỗ trợ.", 405);
 
@@ -107,7 +108,8 @@ export async function proxyBackend(request: Request, segments: string[]): Promis
     if (body === null)
       return failure("Dữ liệu quá lớn. Ảnh tham chiếu không được vượt quá 20 MB.", 413);
 
-    const response = await fetch(`${base}/${isFile ? file : `api/${path}`}`, {
+    const targetPath = isDeleteFile ? `api/files/${file}` : isFile ? file : `api/${path}`;
+    const response = await fetch(`${base}/${targetPath}`, {
       method: request.method,
       headers,
       body,
