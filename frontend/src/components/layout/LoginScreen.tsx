@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { setAccessToken } from "@/lib/api";
+import { Eye, EyeOff } from "lucide-react";
 
 type Props = {
   onLoginSuccess: () => void;
@@ -11,6 +12,7 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
   const [pass, setPass] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPass, setShowPass] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,7 +44,8 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
     return (
       <div className="login-screen">
         <div className="login-box checking">
-          <p>Đang kiểm tra kết nối...</p>
+          <div className="spinner"></div>
+          <p>Đang kết nối...</p>
         </div>
       </div>
     );
@@ -51,12 +54,12 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
   return (
     <div className="login-screen">
       <div className="login-box">
-        <h1>InfraRender AI</h1>
-        <p className="login-subtitle">Đăng nhập để tiếp tục</p>
+        <h1>Đăng nhập</h1>
+        <p className="login-subtitle">Nhập thông tin truy cập hệ thống InfraRender AI</p>
         
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label htmlFor="login-user">Tài khoản</label>
+            <label htmlFor="login-user" className="sr-only">Tài khoản</label>
             <input
               id="login-user"
               type="text"
@@ -64,19 +67,39 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
               onChange={e => setUser(e.target.value)}
               disabled={loading}
               autoComplete="username"
+              placeholder="Tài khoản (VD: admin)"
             />
           </div>
           <div className="form-group">
-            <label htmlFor="login-pass">Mật khẩu</label>
-            <input
-              id="login-pass"
-              type="password"
-              value={pass}
-              onChange={e => setPass(e.target.value)}
-              disabled={loading}
-              autoComplete="current-password"
-              autoFocus
-            />
+            <label htmlFor="login-pass" className="sr-only">Mật khẩu</label>
+            <div className="input-with-icon">
+              <input
+                id="login-pass"
+                type={showPass ? "text" : "password"}
+                value={pass}
+                onChange={e => setPass(e.target.value)}
+                disabled={loading}
+                autoComplete="current-password"
+                placeholder="Mật khẩu"
+                autoFocus
+              />
+              <button 
+                type="button" 
+                className="icon-btn" 
+                onClick={() => setShowPass(!showPass)}
+                aria-label={showPass ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                tabIndex={-1}
+              >
+                {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="login-actions">
+            <label className="remember-me">
+              <input type="checkbox" defaultChecked />
+              <span>Ghi nhớ tôi</span>
+            </label>
           </div>
 
           {error && <p className="login-error" role="alert">{error}</p>}
