@@ -1,0 +1,33 @@
+services:
+  backend:
+    environment:
+      OPENAI_API_KEY: ""
+      OPENAI_API_KEY_FILE: /run/secrets/openai_api_key
+      INFRARENDER_CORS_ORIGINS: https://${INFRARENDER_DOMAIN}
+    secrets:
+      - openai_api_key
+
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      INFRARENDER_DOMAIN: ${INFRARENDER_DOMAIN:?Set INFRARENDER_DOMAIN in the server .env file}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+
+secrets:
+  openai_api_key:
+    file: ./secrets/openai_api_key.txt
+
+volumes:
+  caddy_data:
+  caddy_config:
