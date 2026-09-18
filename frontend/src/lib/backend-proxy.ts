@@ -1,5 +1,8 @@
+import { checkRateLimit } from "@/lib/rate-limit";
+
 // Server-side only: imported by the API route, never by browser components.
-const MAX_REQUEST_BYTES = 21 * 1024 * 1024;
+const MAX_UPLOAD_REQUEST_BYTES = 21 * 1024 * 1024;
+const MAX_JSON_REQUEST_BYTES = 512 * 1024;
 const ROUTES: Record<string, string> = {
   health: "GET",
   "render-status": "GET",
@@ -10,8 +13,16 @@ const ROUTES: Record<string, string> = {
 };
 const FILE_PATH = /^(uploads|outputs)\/([a-zA-Z0-9_-]+\.(?:png|jpe?g|webp))$/;
 
-function failure(detail: string, status: number) {
-  return Response.json({ detail }, { status, headers: { "Cache-Control": "no-store" } });
+function responseHeaders(requestId: string, extra?: HeadersInit) {
+  const headers = new Headers(extra);
+  headers.set("Cache-Control", "no-store");
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("X-Request-ID", requestId);
+  return headers;
+}
+
+function failure(detail: string, status: number, requestId: string, extra?: HeadersInit) {
+  return Response.json({ detail }, { status, headers: responseHeaders(requestId, extra) });
 }
 
 export function backendBaseUrl() {
@@ -35,9 +46,9 @@ export function backendBaseUrl() {
   return value;
 }
 
-async function readBody(request: Request, signal: AbortSignal) {
+async function readBody(request: Request, signal: AbortSignal, maxBytes: number) {
   signal.throwIfAborted();
-  if (Number(request.headers.get("content-length")) > MAX_REQUEST_BYTES) return null;
+  if (Number(request.headers.get("content-length")) > maxBytes) return null;
   if (!request.body) return new Uint8Array();
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -55,7 +66,7 @@ async function readBody(request: Request, signal: AbortSignal) {
       signal.throwIfAborted();
       if (next.done) break;
       length += next.value.byteLength;
-      if (length > MAX_REQUEST_BYTES) {
+      if (length > maxBytes) {
         cancel();
         return null;
       }
@@ -75,13 +86,25 @@ async function readBody(request: Request, signal: AbortSignal) {
 }
 
 export async function proxyBackend(request: Request, segments: string[]): Promise<Response> {
+  const requestId = request.headers.get("x-request-id") || crypto.randomUUID();
   const path = segments.join("/");
   const file = path.startsWith("files/") ? path.slice(6) : "";
   const isFile = FILE_PATH.test(file);
   const isDeleteFile = isFile && request.method === "DELETE";
   const method = isFile ? (isDeleteFile ? "DELETE" : "GET") : ROUTES[path];
-  if (!method) return failure("Không tìm thấy chức năng này.", 404);
-  if (request.method !== method) return failure("Phương thức không được hỗ trợ.", 405);
+  if (!method) return failure("Không tìm thấy chức năng này.", 404, requestId);
+  if (request.method !== method)
+    return failure("Phương thức không được hỗ trợ.", 405, requestId);
+
+  const limited = checkRateLimit(request, path);
+  if (limited) {
+    return failure(
+      "Bạn đang gửi yêu cầu quá nhanh. Vui lòng thử lại sau.",
+      429,
+      requestId,
+      { "Retry-After": String(limited.retryAfterSeconds) },
+    );
+  }
 
   let base: string;
   try {
@@ -93,6 +116,7 @@ export async function proxyBackend(request: Request, segments: string[]): Promis
     return failure(
       "Địa chỉ dịch vụ chưa hợp lệ. Kiểm tra INFRARENDER_API_URL trong frontend/.env.local rồi khởi động lại.",
       503,
+      requestId,
     );
   }
 
@@ -104,9 +128,17 @@ export async function proxyBackend(request: Request, segments: string[]): Promis
     const headers = new Headers();
     const contentType = request.headers.get("content-type");
     if (contentType) headers.set("Content-Type", contentType);
-    const body = request.method === "POST" ? await readBody(request, signal) : undefined;
-    if (body === null)
-      return failure("Dữ liệu quá lớn. Ảnh tham chiếu không được vượt quá 20 MB.", 413);
+    headers.set("X-Request-ID", requestId);
+    const maxBytes = path === "upload-image" ? MAX_UPLOAD_REQUEST_BYTES : MAX_JSON_REQUEST_BYTES;
+    const body =
+      request.method === "POST" ? await readBody(request, signal, maxBytes) : undefined;
+    if (body === null) {
+      const detail =
+        path === "upload-image"
+          ? "Dữ liệu quá lớn. Ảnh tham chiếu không được vượt quá 20 MB."
+          : "Dữ liệu yêu cầu quá lớn.";
+      return failure(detail, 413, requestId);
+    }
 
     const targetPath = isDeleteFile ? `api/files/${file}` : isFile ? file : `api/${path}`;
     const response = await fetch(`${base}/${targetPath}`, {
@@ -124,6 +156,7 @@ export async function proxyBackend(request: Request, segments: string[]): Promis
           "Content-Type": response.headers.get("content-type") || "application/octet-stream",
           "Cache-Control": "private, no-store",
           "X-Content-Type-Options": "nosniff",
+          "X-Request-ID": requestId,
         },
       });
     }
@@ -142,17 +175,19 @@ export async function proxyBackend(request: Request, segments: string[]): Promis
     }
     return Response.json(data, {
       status: response.status,
-      headers: { "Cache-Control": "no-store" },
+      headers: responseHeaders(requestId),
     });
   } catch {
     if (signal.aborted)
       return failure(
         "Dịch vụ phản hồi quá lâu hoặc yêu cầu đã bị hủy. Yêu cầu không được tự động gửi lại.",
         504,
+        requestId,
       );
     return failure(
       "Chưa kết nối được máy chủ xử lý. Chạy start.cmd trong thư mục dự án để khởi động dịch vụ, rồi nhấn kiểm tra lại.",
       503,
+      requestId,
     );
   }
 }
