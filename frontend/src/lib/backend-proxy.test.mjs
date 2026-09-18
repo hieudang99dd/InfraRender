@@ -85,7 +85,9 @@ test("unavailable backend returns a safe operational message and never retries",
   });
   const response = await proxyBackend(new Request("http://localhost:3000/api/health"), ["health"]);
   assert.equal(response.status, 503);
-  assert.match((await response.json()).detail, /start.cmd/);
+  const detail = (await response.json()).detail;
+  assert.match(detail, /Chưa kết nối được máy chủ xử lý/);
+  assert.doesNotMatch(detail, /private network details|127\.0\.0\.1|backend:8000/);
   assert.equal(mock.mock.callCount(), 1);
 });
 
