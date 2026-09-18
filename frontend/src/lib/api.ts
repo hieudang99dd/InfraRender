@@ -63,7 +63,7 @@ export type RenderRequest = {
   prompt: string;
   negative_prompt: string;
   reference_image_name: string;
-  settings: Record<string, unknown>;
+  settings: unknown;
   project_name: string;
 };
 
