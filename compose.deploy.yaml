@@ -1,0 +1,147 @@
+name: infrarender
+
+services:
+  backend:
+    image: ghcr.io/${GHCR_OWNER:-hieudang99dd}/infrarender-backend:${INFRARENDER_IMAGE_TAG:-latest}
+    environment:
+      OPENAI_API_KEY: ""
+      OPENAI_API_KEY_FILE: /run/secrets/openai_api_key
+      OPENAI_IMAGE_MODEL: ${OPENAI_IMAGE_MODEL:-gpt-image-2}
+      OPENAI_VISION_MODEL: ${OPENAI_VISION_MODEL:-gpt-4o-mini}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      INFRARENDER_CORS_ORIGINS: https://${INFRARENDER_DOMAIN}
+      INFRARENDER_PUBLIC_BASE_URL: ""
+    expose:
+      - "8000"
+    volumes:
+      - infrarender_uploads:/app/uploads
+      - infrarender_outputs:/app/outputs
+    secrets:
+      - openai_api_key
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-1g}
+    cpus: ${BACKEND_CPU_LIMIT:-1.5}
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    image: ghcr.io/${GHCR_OWNER:-hieudang99dd}/infrarender-frontend:${INFRARENDER_IMAGE_TAG:-latest}
+    environment:
+      INFRARENDER_API_URL: http://backend:8000
+    expose:
+      - "3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    mem_limit: ${FRONTEND_MEMORY_LIMIT:-512m}
+    cpus: ${FRONTEND_CPU_LIMIT:-1.0}
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  maintenance:
+    image: ghcr.io/${GHCR_OWNER:-hieudang99dd}/infrarender-backend:${INFRARENDER_IMAGE_TAG:-latest}
+    environment:
+      INFRARENDER_UPLOAD_RETENTION_HOURS: ${INFRARENDER_UPLOAD_RETENTION_HOURS:-168}
+      INFRARENDER_OUTPUT_RETENTION_HOURS: ${INFRARENDER_OUTPUT_RETENTION_HOURS:-720}
+      INFRARENDER_CLEANUP_INTERVAL_SECONDS: ${INFRARENDER_CLEANUP_INTERVAL_SECONDS:-21600}
+      INFRARENDER_LOG_LEVEL: ${INFRARENDER_LOG_LEVEL:-INFO}
+    volumes:
+      - infrarender_uploads:/app/uploads
+      - infrarender_outputs:/app/outputs
+    command: ["python", "-m", "services.cleanup_storage", "--loop"]
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 64
+    mem_limit: ${MAINTENANCE_MEMORY_LIMIT:-256m}
+    cpus: ${MAINTENANCE_CPU_LIMIT:-0.25}
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+  caddy:
+    image: caddy:2.11.4-alpine
+    environment:
+      INFRARENDER_DOMAIN: ${INFRARENDER_DOMAIN:?Set INFRARENDER_DOMAIN in the server .env file}
+      INFRARENDER_BASIC_AUTH_USER: ${INFRARENDER_BASIC_AUTH_USER:?Set INFRARENDER_BASIC_AUTH_USER in the server .env file}
+      INFRARENDER_BASIC_AUTH_HASH: ${INFRARENDER_BASIC_AUTH_HASH:?Set INFRARENDER_BASIC_AUTH_HASH in the server .env file}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+    pids_limit: 128
+    mem_limit: ${CADDY_MEMORY_LIMIT:-256m}
+    cpus: ${CADDY_CPU_LIMIT:-0.50}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+secrets:
+  openai_api_key:
+    file: ./secrets/openai_api_key.txt
+
+volumes:
+  infrarender_uploads:
+    name: infrarender_uploads
+  infrarender_outputs:
+    name: infrarender_outputs
+  caddy_data:
+    name: infrarender_caddy_data
+  caddy_config:
+    name: infrarender_caddy_config

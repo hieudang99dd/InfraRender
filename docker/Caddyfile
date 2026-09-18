@@ -1,0 +1,41 @@
+{
+    servers {
+        max_header_size 64KB
+        timeouts {
+            read_header 10s
+            read_body 2m
+            write 10m
+            idle 2m
+        }
+    }
+}
+
+{$INFRARENDER_DOMAIN} {
+    @protected not path /api/health
+
+    basic_auth @protected {
+        {$INFRARENDER_BASIC_AUTH_USER} {$INFRARENDER_BASIC_AUTH_HASH}
+    }
+
+    encode zstd gzip
+
+    request_body {
+        max_size 22MiB
+    }
+
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        X-Frame-Options "SAMEORIGIN"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Strict-Transport-Security "max-age=31536000"
+        -Server
+    }
+
+    log {
+        output stdout
+        format json
+    }
+
+    reverse_proxy frontend:3000
+}

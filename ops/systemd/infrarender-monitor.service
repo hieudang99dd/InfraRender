@@ -1,0 +1,11 @@
+[Unit]
+Description=Check InfraRender production health
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/infrarender
+EnvironmentFile=-/opt/infrarender/.env
+ExecStart=/usr/bin/bash /opt/infrarender/ops/production-check.sh
