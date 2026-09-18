@@ -103,15 +103,18 @@ hoạt động. Môi trường hiện tại chưa có API key để xác minh re
 - Vùng so sánh **Ảnh gốc / Ảnh Render** đặt hai ảnh cạnh nhau, cùng kích thước khung và hiển thị trọn ảnh. Trên điện thoại, hai ảnh xếp dọc. Thay hoặc xóa ảnh gốc sẽ gỡ kết quả cũ khỏi vùng so sánh để tránh đối chiếu nhầm; tệp trên máy chủ vẫn được giữ.
 - Bố cục hai cột trên desktop; thiết lập nằm cạnh vùng so sánh và prompt. Trên tablet và điện thoại, các vùng xếp theo thứ tự thao tác.
 
-API tạo prompt tổng hợp văn bản từ các lựa chọn và ghi chú; đây không phải bước
-phân tích ảnh bằng mô hình thị giác. Bước render riêng mới gửi ảnh và prompt tới
-provider. Thông số độ phân giải/tỷ lệ nếu được chọn được đưa vào prompt, không phải
-cam kết kích thước ảnh trả về.
+API tạo prompt luôn có rule-based fallback. Khi có ảnh tham chiếu đã upload và
+`OPENAI_API_KEY` hợp lệ, backend có thể dùng Vision AI để phân tích ảnh rồi kết hợp
+với các thiết lập người dùng; nếu Vision không khả dụng, prompt rule-based vẫn được
+trả về. Bước render sử dụng đúng prompt người dùng đang chỉnh sửa. Thông số độ
+phân giải/tỷ lệ nếu được chọn được đưa vào prompt, không phải cam kết kích thước ảnh
+trả về.
 
-Prompt, lịch sử và trạng thái hiển thị kết quả nằm trong bộ nhớ trang và mất khi tải
-lại. Xuất prompt hoặc tải ảnh xuống để giữ nội dung. Ảnh đã lưu nằm trong
-`backend/uploads/`, ảnh render nằm trong `backend/outputs/`. Xóa ảnh khỏi giao diện
-hoặc tạo dự án mới không xóa các tệp trên máy chủ.
+Tên dự án, settings, ghi chú, prompt, negative prompt, prompt history và render
+history được lưu trong `localStorage` của trình duyệt. Ảnh nguồn dạng blob không
+được khôi phục sau khi tải lại trang nên có thể cần chọn lại ảnh. Ảnh đã lưu phía
+server nằm trong `backend/uploads/`, ảnh render nằm trong `backend/outputs/`; khi
+chạy Docker production chúng được giữ bằng persistent volumes.
 
 ## Cấu trúc
 
@@ -312,3 +315,24 @@ Tài liệu chuẩn để phát triển và triển khai InfraRenderAI:
 - [SKILL_InfraRenderAI_Production_Agent](docs/SKILL_InfraRenderAI_Production_Agent.md)
 
 Mọi thay đổi production nên được đối chiếu với Skill này trước khi merge/deploy.
+
+
+## Production hardening
+
+Repository hiện có các lớp bảo vệ production sau:
+
+- rate limiting tại Next.js API proxy theo client IP;
+- giới hạn request body tại proxy và Caddy;
+- request ID và log metadata không ghi request body/prompt/API key;
+- Caddy security headers và HTTPS;
+- container `no-new-privileges`, drop Linux capabilities cho frontend/backend;
+- PID/resource limits có thể cấu hình;
+- Docker log rotation;
+- retention worker tự dọn upload/output cũ theo biến môi trường;
+- Trivy security scanning trong CI;
+- Dependabot cho npm, pip, Docker base images và GitHub Actions;
+- Docker image SBOM và provenance khi publish lên GHCR.
+
+Các công cụ deploy, rollback, backup, restore và monitoring nằm trong
+[`ops/`](ops/README.md). Trạng thái readiness chi tiết nằm tại
+[`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md).
