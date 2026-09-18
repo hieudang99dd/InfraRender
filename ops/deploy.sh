@@ -33,6 +33,7 @@ for attempt in {1..30}; do
     healthy=1
     break
   fi
+  echo "Health check attempt $attempt/30 failed; retrying..." >&2
   sleep 5
 done
 
