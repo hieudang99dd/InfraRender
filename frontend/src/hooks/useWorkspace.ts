@@ -20,6 +20,7 @@ export function useWorkspace() {
   const [sourceImageName, setSourceImageName] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- Hydrate browser-only persisted state after mount. */
   useEffect(() => {
     try {
       const savedV1 = localStorage.getItem("infrarender.workspace.v1");
@@ -46,6 +47,7 @@ export function useWorkspace() {
     } catch {}
     setIsLoaded(true);
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!isLoaded) return;
