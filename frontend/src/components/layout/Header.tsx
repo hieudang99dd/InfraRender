@@ -1,4 +1,4 @@
-import { Box, LogOut, FilePlus, Save, Trash2, Archive, ChevronDown, Pencil } from "lucide-react";
+import { Box, LogOut, FilePlus, Save, Trash2, Archive, ChevronDown } from "lucide-react";
 import type { useWorkspace } from "@/hooks/useWorkspace";
 import { setAccessToken } from "@/lib/api";
 

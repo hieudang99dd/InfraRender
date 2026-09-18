@@ -105,7 +105,6 @@ export function useProjectPersistence(data: WorkspaceState, setData: Dispatch<Se
               setConflict(false);
               setProjectId(null);
               // Restart saveProject to create new project instead of hanging
-              setTimeout(() => void saveProject(), 0);
               return false;
             }
             const collided=err instanceof ApiError && err.status===409;

@@ -37,7 +37,7 @@ export default function Home() {
 
   if (!isAuthenticated) {
     return <LoginScreen onLoginSuccess={() => {
-      try { localStorage.removeItem(`infrarender.workspace.v2:${getBackendUrl()}`); } catch (e) {}
+      try { localStorage.removeItem(`infrarender.workspace.v2:${getBackendUrl()}`); } catch {}
       window.location.reload();
     }} isChecking={isCheckingAuth} />;
   }
