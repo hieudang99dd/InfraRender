@@ -25,6 +25,14 @@ MAX_MODEL_RESPONSE_BYTES = 64 * 1024
 
 
 @dataclass(frozen=True)
+class RenderResultMetadata:
+    width: int
+    height: int
+    provider: str
+    model: str
+
+
+@dataclass(frozen=True)
 class RenderConfig:
     api_key: str = field(repr=False)
     model: str = "gpt-image-2"
@@ -164,6 +172,12 @@ class OpenAIImageProvider(ImageProvider):
                         if not isinstance(payload, dict) or payload.get("id") != config.model:
                             raise ValueError("Invalid model")
             return self._record_status(config, "connected", "Kết nối thành công.")
+        except (asyncio.TimeoutError, httpx.TimeoutException):
+            return self._record_status(config, "timeout", "Dịch vụ phản hồi quá lâu.")
+        except httpx.ConnectError:
+            return self._record_status(config, "unreachable", "Không thể kết nối tới dịch vụ.")
+        except httpx.RequestError:
+            return self._record_status(config, "unreachable", "Không thể kết nối tới dịch vụ.")
         except Exception:
             return self._record_status(config, "provider_error", "Lỗi kết nối.")
 
@@ -184,6 +198,7 @@ class OpenAIImageProvider(ImageProvider):
                         files={"image[]": (f"reference{metadata.extension}", image_content, metadata.content_type)},
                     ) as response:
                         if not response.is_success:
+                            self._record_status(config, *_provider_connection_issue(response.status_code))
                             raise provider_error(response.status_code)
                         body = bytearray()
                         async for chunk in response.aiter_bytes(chunk_size=64 * 1024):
@@ -191,9 +206,19 @@ class OpenAIImageProvider(ImageProvider):
                             if len(body) > MAX_PROVIDER_RESPONSE_BYTES:
                                 raise HTTPException(502, "Kết quả vượt quá giới hạn.")
             content, result_meta = await run_in_threadpool(decode_render, bytes(body))
-            # Tag the metadata with provider info
-            result_meta.provider = PROVIDER_NAME
-            result_meta.model = config.model
-            return content, result_meta
-        except asyncio.TimeoutError:
-            raise HTTPException(504, "Quá thời gian.")
+            self._record_status(config, "connected", "Vừa tạo ảnh thành công.")
+            return content, RenderResultMetadata(
+                width=result_meta.width,
+                height=result_meta.height,
+                provider=PROVIDER_NAME,
+                model=config.model,
+            )
+        except (asyncio.TimeoutError, httpx.TimeoutException) as exc:
+            self._record_status(config, "timeout", "Dịch vụ tạo ảnh phản hồi quá lâu.")
+            raise HTTPException(504, "Dịch vụ tạo ảnh phản hồi quá lâu.") from exc
+        except httpx.ConnectError as exc:
+            self._record_status(config, "unreachable", "Không thể kết nối tới dịch vụ tạo ảnh.")
+            raise HTTPException(502, "Không thể kết nối tới dịch vụ tạo ảnh.") from exc
+        except httpx.RequestError as exc:
+            self._record_status(config, "provider_error", "Lỗi kết nối dịch vụ tạo ảnh.")
+            raise HTTPException(502, "Lỗi kết nối dịch vụ tạo ảnh.") from exc
