@@ -19,6 +19,18 @@ services:
       - infrarender_uploads:/app/uploads
       - infrarender_outputs:/app/outputs
     restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test:
         - CMD
@@ -43,6 +55,18 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test:
         - CMD
@@ -56,4 +80,6 @@ services:
 
 volumes:
   infrarender_uploads:
+    name: infrarender_uploads
   infrarender_outputs:
+    name: infrarender_outputs
