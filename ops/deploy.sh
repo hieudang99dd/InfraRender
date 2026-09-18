@@ -1,14 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ ! -f .env ]; then
-  echo "Missing .env in repository root." >&2
-  exit 2
-fi
-if [ ! -f secrets/openai_api_key.txt ]; then
-  echo "Missing secrets/openai_api_key.txt." >&2
-  exit 2
-fi
+bash ops/preflight.sh
 
 set -a
 # shellcheck disable=SC1091
