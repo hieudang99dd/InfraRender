@@ -8,7 +8,7 @@ type Props = {
 };
 
 export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
-  const [user, setUser] = useState("admin");
+  const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -66,8 +66,9 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
               value={user}
               onChange={e => setUser(e.target.value)}
               disabled={loading}
-              autoComplete="username"
-              placeholder="Tài khoản (VD: admin)"
+              autoComplete="off"
+              placeholder="Tên đăng nhập"
+              autoFocus
             />
           </div>
           <div className="form-group">
@@ -79,9 +80,8 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
                 value={pass}
                 onChange={e => setPass(e.target.value)}
                 disabled={loading}
-                autoComplete="current-password"
+                autoComplete="new-password"
                 placeholder="Mật khẩu"
-                autoFocus
               />
               <button 
                 type="button" 

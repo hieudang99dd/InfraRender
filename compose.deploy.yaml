@@ -13,7 +13,7 @@ services:
       # -- Storage: all persistent data (SQLite + uploads + outputs) under one volume --
       INFRARENDER_DATA_DIR: /data
       # -- Security & routing --
-      INFRARENDER_AUTH_USER: admin
+      INFRARENDER_AUTH_USER: hieu.dv
       INFRARENDER_AUTH_PASS_FILE: /run/secrets/infrarender_auth_pass
       INFRARENDER_CORS_ORIGINS: https://${INFRARENDER_DOMAIN}
       INFRARENDER_PUBLIC_BASE_URL: ""

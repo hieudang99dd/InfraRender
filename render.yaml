@@ -1,4 +1,4 @@
-﻿services:
+services:
   - type: web
     name: infrarender-backend
     env: docker
@@ -18,7 +18,7 @@
         value: /data  # Persistent disk mount path. Activate 'disk' block below when upgrading.
 
       - key: INFRARENDER_AUTH_USER
-        value: "admin"
+        value: "hieu.dv"
 
       - key: INFRARENDER_AUTH_PASS
         sync: false

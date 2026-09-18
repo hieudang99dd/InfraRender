@@ -69,7 +69,7 @@ async def api_access(request: Request, call_next):
     public = {"/", "/health", "/api/health", "/api/render-status"}
     if request.url.path.startswith("/api/") and request.url.path not in public and request.method != "OPTIONS":
         auth_pass = env_or_file("INFRARENDER_AUTH_PASS")
-        auth_user = os.getenv("INFRARENDER_AUTH_USER", "admin").strip()
+        auth_user = os.getenv("INFRARENDER_AUTH_USER", "hieu.dv").strip()
         
         if os.getenv("INFRARENDER_AUTH_PASS_FILE", "").strip() and not auth_pass:
             return JSONResponse({"detail": "Mật khẩu máy chủ chưa được cấu hình hợp lệ."}, status_code=503)
