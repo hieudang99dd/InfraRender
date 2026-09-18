@@ -109,6 +109,8 @@ services:
     image: caddy:2.11.4-alpine
     environment:
       INFRARENDER_DOMAIN: ${INFRARENDER_DOMAIN:?Set INFRARENDER_DOMAIN in the server .env file}
+      INFRARENDER_BASIC_AUTH_USER: ${INFRARENDER_BASIC_AUTH_USER:?Set INFRARENDER_BASIC_AUTH_USER in the server .env file}
+      INFRARENDER_BASIC_AUTH_HASH: ${INFRARENDER_BASIC_AUTH_HASH:?Set INFRARENDER_BASIC_AUTH_HASH in the server .env file}
     ports:
       - "80:80"
       - "443:443"
