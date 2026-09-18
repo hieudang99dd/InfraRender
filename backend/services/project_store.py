@@ -12,11 +12,13 @@ from datetime import datetime, timezone
 import json
 import logging
 import math
+import os
 from pathlib import Path
 import re
 import sqlite3
 from threading import Lock
 import time
+import tempfile
 from typing import Any, Annotated, Literal
 from uuid import UUID, uuid4
 
@@ -197,6 +199,35 @@ class ProjectStore:
             raise
         finally:
             connection.close()
+
+    def check_ready(self) -> bool:
+        """Probe the actual database and media roots without changing projects."""
+        try:
+            # A lost mount must not silently become a new empty database.
+            if not self.db_path.is_file():
+                return False
+            connection = sqlite3.connect(self.db_path, timeout=1)
+            try:
+                connection.execute("BEGIN IMMEDIATE")
+                connection.execute("UPDATE projects SET revision = revision WHERE id = ''")
+                connection.rollback()
+            finally:
+                connection.close()
+            for directory in self.directories.values():
+                if not directory.is_dir() or _is_link(directory):
+                    return False
+                descriptor, name = tempfile.mkstemp(prefix=".readiness-", dir=directory)
+                try:
+                    with os.fdopen(descriptor, "wb") as probe:
+                        probe.write(b"ready")
+                        probe.flush()
+                        os.fsync(probe.fileno())
+                finally:
+                    Path(name).unlink(missing_ok=True)
+            return True
+        except (OSError, sqlite3.Error):
+            logger.warning("Storage readiness check failed")
+            return False
 
     @staticmethod
     def _document(row) -> dict:

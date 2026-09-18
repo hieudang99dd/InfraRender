@@ -58,12 +58,23 @@ export function normalizeWorkspace(value: unknown, defaults: RenderSettings, bac
   if (Array.isArray(data.versions)) result.versions=data.versions.filter(v=>v && typeof v.id==="string" && typeof v.prompt==="string" && typeof v.createdAt==="string").slice(0,200).map(v=>({
     id:text(v.id,200),createdAt:text(v.createdAt,100),prompt:text(v.prompt),negativePrompt:text(v.negativePrompt,4000),settings:readSettings(v.settings,defaults),notes:text(v.notes,5000),sourceName:text(v.sourceName,200),generatedFrom:text(v.generatedFrom,50000),favorite:v.favorite===true
   }));
-  if (Array.isArray(data.renderVersions)) result.renderVersions=data.renderVersions.filter(v=>v && typeof v.id==="string" && mediaName.test(v.name) && typeof v.prompt==="string" && Number.isInteger(v.width) && v.width>0 && Number.isInteger(v.height) && v.height>0).slice(0,200).map(v=>({
-    id:text(v.id,200),createdAt:text(v.createdAt,100),name:v.name,url:`${backend}/outputs/${v.name}`,width:v.width,height:v.height,
-    prompt:text(v.prompt),negativePrompt:text(v.negativePrompt,4000),settings:readSettings(v.settings,defaults),notes:text(v.notes,5000),
-    projectName:text(v.projectName,200),provider:text(v.provider,200),model:text(v.model,200),source:readSource(v.source,backend),
-    details: {native_size:text(record(v.details).native_size,50), final_size:text(record(v.details).final_size,50),provider_size:text(record(v.details).provider_size,50),processing:text(record(v.details).processing,50),upscaled:record(v.details).upscaled===true,cropped:record(v.details).cropped===true,experimental:record(v.details).experimental===true}
-  }));
+  // Migration: older API/LocalStorage versions stored render history under 'renderHistory'.
+  // If 'renderVersions' is absent or empty, fall back to 'renderHistory' before discarding.
+  const rawRenderVersions = (Array.isArray(data.renderVersions) && data.renderVersions.length > 0)
+    ? data.renderVersions
+    : (Array.isArray(data.renderHistory) ? data.renderHistory : []);
+
+  if (rawRenderVersions.length > 0) result.renderVersions = rawRenderVersions
+    .filter(v => v && typeof v.id === "string" && mediaName.test(v.name) && typeof v.prompt === "string" && Number.isInteger(v.width) && v.width > 0 && Number.isInteger(v.height) && v.height > 0)
+    .slice(0, 200)
+    .map(v => ({
+      id: text(v.id, 200), createdAt: text(v.createdAt, 100), name: v.name, url: `${backend}/outputs/${v.name}`,
+      width: v.width, height: v.height, prompt: text(v.prompt), negativePrompt: text(v.negativePrompt, 4000),
+      settings: readSettings(v.settings, defaults), notes: text(v.notes, 5000),
+      projectName: text(v.projectName, 200), provider: text(v.provider, 200), model: text(v.model, 200),
+      source: readSource(v.source, backend),
+      details: { native_size: text(record(v.details).native_size, 50), final_size: text(record(v.details).final_size, 50), provider_size: text(record(v.details).provider_size, 50), processing: text(record(v.details).processing, 50), upscaled: record(v.details).upscaled === true, cropped: record(v.details).cropped === true, experimental: record(v.details).experimental === true }
+    }));
   result.activeVersion=result.versions.some(v=>v.id===data.activeVersion)?data.activeVersion as string:null;
   result.activeRenderId=result.renderVersions.some(v=>v.id===data.activeRenderId)?data.activeRenderId as string:null;
   return result;

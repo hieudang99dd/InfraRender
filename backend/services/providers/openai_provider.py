@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from fastapi.concurrency import run_in_threadpool
 
 from services.image_upload import ImageMetadata, validate_image
+from services.config import env_or_file
 from services.providers.base import ImageProvider
 
 RENDER_TIMEOUT_SECONDS = 180
@@ -114,7 +115,7 @@ class OpenAIImageProvider(ImageProvider):
 
     def _get_config(self) -> RenderConfig:
         return RenderConfig(
-            api_key=os.getenv("OPENAI_API_KEY", "").strip(),
+            api_key=env_or_file("OPENAI_API_KEY"),
             model=os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-2").strip(),
             base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").strip().rstrip("/"),
         )
@@ -189,7 +190,8 @@ class OpenAIImageProvider(ImageProvider):
                         files={"image[]": (f"reference{metadata.extension}", image_content, metadata.content_type)},
                     ) as response:
                         if not response.is_success:
-                            self._record_status(config, *_provider_connection_issue(response.status_code))
+                            if response.status_code not in {400, 422}:
+                                self._record_status(config, *_provider_connection_issue(response.status_code))
                             raise provider_error(response.status_code)
                         body = bytearray()
                         async for chunk in response.aiter_bytes(chunk_size=64 * 1024):

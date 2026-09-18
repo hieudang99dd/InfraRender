@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from schemas import PromptRequest, PromptResponse
 from services.image_upload import ALLOWED_CONTENT_TYPES, MAX_IMAGE_BYTES
 from services.prompt_builder import build_rule_based_prompt
+from services.config import env_or_file
 from services.providers.openai_provider import RenderConfig
 
 PROMPT_TIMEOUT_SECONDS = 60
@@ -46,7 +47,7 @@ OUTPUT_SCHEMA = {
 def _prompt_config() -> RenderConfig:
     model = os.getenv("OPENAI_PROMPT_MODEL", "").strip() or os.getenv("OPENAI_VISION_MODEL", "").strip() or "gpt-4o-mini"
     config = RenderConfig(
-        api_key=os.getenv("OPENAI_API_KEY", "").strip(),
+        api_key=env_or_file("OPENAI_API_KEY"),
         model=model,
         base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").strip().rstrip("/"),
     )

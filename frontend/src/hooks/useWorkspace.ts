@@ -39,17 +39,26 @@ export function useWorkspace() {
     setUploading(false);setGenerating(false);setRendering(false);setDownloading(false);
   }
   async function changeSource(next:ImageChangePayload|null) {
-    cancelRequests();clearPreview();patch({source:null,activeRenderId:null});setError("");setNotice("");
-    if(!next)return;
+    cancelRequests();clearPreview();setError("");setNotice("");
+    // Preserve the current source so we can roll back if the upload fails.
+    const previousSource=data.source;
+    patch({source:null,activeRenderId:null});
+    if(!next){return;}
     previewRef.current=next;setPreview(next);
     const controller=new AbortController();uploadRef.current=controller;setUploading(true);
     try {
       const result=await uploadImage(next.file,controller.signal);
-      if(controller.signal.aborted)return;
+      if(controller.signal.aborted){
+        // Upload was cancelled — restore the previous image so autosave doesn't write source:null.
+        patch({source:previousSource});
+        return;
+      }
       const stored:StoredSource={saved_name:result.saved_name,url:result.url,name:next.name,size:next.size,resolution:next.resolution};
       patch({source:stored});clearPreview();setNotice("Đã lưu ảnh gốc. Dự án sẽ tự động lưu.");
     } catch(err) {
-      if(!controller.signal.aborted)setError(err instanceof Error?err.message:"Không thể lưu ảnh gốc. Chọn lại ảnh để thử lại.");
+      // Restore the old image so the project remains valid.
+      patch({source:previousSource});
+      if(!controller.signal.aborted)setError(err instanceof Error?err.message:"Không thể lưu ảnh gốc. Ảnh tham chiếu trước đó đã được giữ lại.");
     } finally {if(uploadRef.current===controller){uploadRef.current=null;setUploading(false);}}
   }
   function makeVersion(text:string,signature:string):PromptVersion {

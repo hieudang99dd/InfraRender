@@ -19,6 +19,7 @@ from services.image_render import check_render_connection, render_image, render_
 from services.image_upload import read_image, validate_image
 from services.project_store import ProjectStore, safe_media_path
 from services.prompt_engine import generate_prompt as create_prompt
+from services.config import env_or_file
 
 VERSION = "0.6.0"
 BASE_DIR = Path(__file__).resolve().parent
@@ -39,7 +40,7 @@ provider_slots = asyncio.Semaphore(2)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if os.getenv("INFRARENDER_ENV") == "production":
-        if len(os.getenv("INFRARENDER_ACCESS_TOKEN", "")) < 32:
+        if len(env_or_file("INFRARENDER_ACCESS_TOKEN")) < 32:
             raise RuntimeError("Production requires INFRARENDER_ACCESS_TOKEN with at least 32 characters.")
         if not PUBLIC_BASE_URL.startswith("https://") or not CORS_ORIGINS or "*" in CORS_ORIGINS:
             raise RuntimeError("Production requires an HTTPS public backend URL and explicit CORS origins.")
@@ -66,7 +67,9 @@ app = FastAPI(title="InfraRender AI Backend", version=VERSION, lifespan=lifespan
 async def api_access(request: Request, call_next):
     public = {"/", "/health", "/api/health", "/api/render-status"}
     if request.url.path.startswith("/api/") and request.url.path not in public and request.method != "OPTIONS":
-        token = os.getenv("INFRARENDER_ACCESS_TOKEN", "")
+        token = env_or_file("INFRARENDER_ACCESS_TOKEN")
+        if os.getenv("INFRARENDER_ACCESS_TOKEN_FILE", "").strip() and not token:
+            return JSONResponse({"detail": "Mã truy cập máy chủ chưa được cấu hình hợp lệ."}, status_code=503)
         supplied = request.headers.get("Authorization", "")
         if token and not hmac.compare_digest(supplied.encode(), f"Bearer {token}".encode()):
             return JSONResponse({"detail": "Cần mã truy cập ứng dụng hợp lệ."}, status_code=401)
@@ -99,10 +102,16 @@ def root():
 @app.get("/api/health")
 def health():
     renderer = render_status()
-    return {"status": "ok", "service": "InfraRender AI Backend", "version": VERSION,
-            "authentication_required": bool(os.getenv("INFRARENDER_ACCESS_TOKEN")),
-            "capabilities": {"upload": True, "prompt_generation": True, "projects": True,
-                             "image_generation": renderer.get("state") == "rendered"}, "renderer": renderer}
+    storage_ready = store.check_ready()
+    token = env_or_file("INFRARENDER_ACCESS_TOKEN")
+    token_file = bool(os.getenv("INFRARENDER_ACCESS_TOKEN_FILE", "").strip())
+    ready = storage_ready and (not token_file or bool(token))
+    body = {"status": "ok" if ready else "unavailable", "service": "InfraRender AI Backend", "version": VERSION,
+            "authentication_required": bool(token) or token_file,
+            "storage": {"ready": storage_ready},
+            "capabilities": {"upload": ready, "prompt_generation": ready, "projects": ready,
+                             "image_generation": ready and renderer.get("state") == "rendered"}, "renderer": renderer}
+    return JSONResponse(body, status_code=200 if ready else 503)
 
 
 @app.get("/api/render-status")

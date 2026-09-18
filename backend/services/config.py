@@ -10,6 +10,6 @@ def env_or_file(name: str, default: str = "") -> str:
     if file_path:
         try:
             return Path(file_path).read_text(encoding="utf-8").strip()
-        except OSError:
+        except (OSError, UnicodeError):
             return ""
     return os.getenv(name, default).strip()

@@ -179,7 +179,8 @@ class ProjectApiTests(unittest.TestCase):
     def test_production_lifespan_accepts_explicit_secure_configuration(self):
         with patch.dict(os.environ, {"INFRARENDER_ENV": "production", "INFRARENDER_ACCESS_TOKEN": "x" * 32}), \
              patch.object(main, "PUBLIC_BASE_URL", "https://infra.example.test"), \
-             patch.object(main, "CORS_ORIGINS", ["https://ui.example.test"]):
+             patch.object(main, "CORS_ORIGINS", ["https://ui.example.test"]), \
+             patch.object(main.store, "check_ready", return_value=True):
             with TestClient(main.app) as client:
                 self.assertEqual(client.get("/health").status_code, 200)
 

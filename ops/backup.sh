@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# InfraRenderAI backup script
+# Backs up the single infrarender_data Docker volume (projects.sqlite3 + uploads/ + outputs/)
+# Usage: ./ops/backup.sh [backup_root_dir]
 set -euo pipefail
 
 BACKUP_ROOT="${1:-./backups}"
@@ -10,25 +13,39 @@ DEST_ABS="$(cd "$DEST" && pwd)"
 
 backup_volume() {
   local volume="$1"
-  docker volume inspect "$volume" >/dev/null
-  docker run --rm     -v "$volume:/source:ro"     -v "$DEST_ABS:/backup"     alpine:3.22     sh -c "cd /source && tar -czf /backup/${volume}.tar.gz ."
+  local output_file="$2"
+  docker volume inspect "$volume" > /dev/null
+  docker run --rm \
+    -v "$volume:/source:ro" \
+    -v "$DEST_ABS:/backup" \
+    alpine:3.22 \
+    sh -c "cd /source && tar -czf /backup/${output_file} ."
+  echo "  ✓ Backed up volume '${volume}' → ${output_file}"
 }
 
-backup_volume infrarender_uploads
-backup_volume infrarender_outputs
+# Back up the unified data volume (SQLite database + uploads + outputs)
+backup_volume infrarender_data infrarender_data.tar.gz
 
 (
   cd "$DEST_ABS"
-  sha256sum infrarender_uploads.tar.gz infrarender_outputs.tar.gz > SHA256SUMS
+  sha256sum infrarender_data.tar.gz > SHA256SUMS
   {
     echo "created_at_utc=$STAMP"
     echo "git_revision=$(git rev-parse HEAD 2>/dev/null || echo unknown)"
     echo "host=$(hostname)"
+    echo "volumes=infrarender_data"
   } > metadata.txt
 )
 
-if [[ "$RETENTION_DAYS" =~ ^[0-9]+$ ]] && [ "$RETENTION_DAYS" -gt 0 ]; then
-  find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -mtime +"$RETENTION_DAYS" -exec rm -rf {} +
-fi
-
 echo "Backup created: $DEST_ABS"
+echo "Contents:"
+ls -lh "$DEST_ABS"
+
+# Purge old backups beyond the retention window
+if [[ "$RETENTION_DAYS" =~ ^[0-9]+$ ]] && [ "$RETENTION_DAYS" -gt 0 ]; then
+  PRUNED=$(find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -mtime +"$RETENTION_DAYS" -print)
+  if [ -n "$PRUNED" ]; then
+    echo "$PRUNED" | xargs rm -rf
+    echo "Pruned $(echo "$PRUNED" | wc -l) old backup(s) older than ${RETENTION_DAYS} days."
+  fi
+fi

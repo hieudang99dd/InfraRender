@@ -364,6 +364,17 @@ class RenderApiTests(unittest.TestCase):
                 self.assertEqual(len(self.requests), 1)
                 self.assertEqual(list(self.output_dir.iterdir()), [])
 
+    def test_provider_input_rejection_preserves_verified_render_status(self):
+        self.assertEqual(self.render().status_code, 200)
+        before = self.client.get("/api/render-status").json()
+        for status in (400, 422):
+            self.provider_response = httpx.Response(status, json={"error": "bad input"})
+            self.assertEqual(self.render().status_code, 400)
+            self.assertEqual(self.client.get("/api/render-status").json(), before)
+        self.provider_response = httpx.Response(401, json={"error": "expired key"})
+        self.assertEqual(self.render().status_code, 502)
+        self.assertFalse(self.client.get("/api/render-status").json()["ready"])
+
     def test_provider_timeout_and_connection_errors_are_sanitized(self):
         for error, expected_status in (
             (httpx.ReadTimeout("secret transport details"), 504),
