@@ -83,3 +83,8 @@ backend/uploads/
 backend/outputs/
 backend/renders/
 backend/generated/
+# -----------------------------
+# LOCAL / PRODUCTION SECRETS
+# -----------------------------
+secrets/*
+!secrets/README.md
