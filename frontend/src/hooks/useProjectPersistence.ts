@@ -18,7 +18,14 @@ export function useProjectPersistence(data: WorkspaceState, setData: Dispatch<Se
   const current=useRef(data), busy=useRef(blocked), identity=useRef<Identity>(null);
   const synced=useRef(""), pending=useRef<Promise<boolean>|null>(null), conflictRef=useRef(false);
   const alive=useRef(true);
-  useEffect(()=>{ current.current=data; busy.current=blocked; },[data,blocked]);
+  useEffect(()=>{ 
+    current.current=data; 
+    busy.current=blocked; 
+    if (conflictRef.current) {
+      conflictRef.current = false;
+      setConflict(false);
+    }
+  },[data,blocked]);
 
   const writeDraft=useCallback((workspace:WorkspaceState)=>{
     try {
