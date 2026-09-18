@@ -80,7 +80,7 @@ class ProjectApiTests(unittest.TestCase):
         self.assertEqual(upload.status_code, 200, upload.text)
         uploaded = upload.json()
         snapshot = {
-            "schemaVersion": 1, "projectName": "Cáº§u thÃ nh phá»‘", "promptMode": "vision",
+            "schemaVersion": 1, "projectName": "Cầu thÃ nh phá»‘", "promptMode": "vision",
             "source": {"saved_name": uploaded["saved_name"], "url": uploaded["url"],
                        "name": "cau.png", "size": "0.01 MB", "resolution": "8 Ã— 6"},
             "prompt": "Giá»¯ nguyÃªn hÃ¬nh há»c cáº§u", "notes": "Buá»•i chiá»u",
@@ -88,7 +88,7 @@ class ProjectApiTests(unittest.TestCase):
             "promptAnalysis": ["Má»™t tuyáº¿n Ä‘Æ°á»ng qua cáº§u"], "promptModel": "test-vision",
             "versions": [], "renderVersions": [], "activeRenderId": None,
         }
-        created = self.client.post("/api/projects", json={"name": "Cáº§u thÃ nh phá»‘", "workspace": snapshot})
+        created = self.client.post("/api/projects", json={"name": "Cầu thÃ nh phá»‘", "workspace": snapshot})
         self.assertEqual(created.status_code, 201, created.text)
         project = created.json()
         url = f"/api/projects/{project['id']}"
@@ -98,7 +98,7 @@ class ProjectApiTests(unittest.TestCase):
 
         media_url = f"/api/files/uploads/{uploaded['saved_name']}"
         self.assertEqual(self.client.delete(media_url).status_code, 409)
-        update = {"name": "Cáº§u má»›i", "workspace": {**snapshot, "notes": "Buá»•i sÃ¡ng"}, "revision": 1}
+        update = {"name": "Cầu má»›i", "workspace": {**snapshot, "notes": "Buá»•i sÃ¡ng"}, "revision": 1}
         saved = self.client.put(url, json=update)
         self.assertEqual(saved.status_code, 200, saved.text)
         self.assertEqual(saved.json()["revision"], 2)
@@ -109,7 +109,7 @@ class ProjectApiTests(unittest.TestCase):
         self.assertFalse((self.uploads / uploaded["saved_name"]).exists())
 
     def test_project_update_requires_revision_and_rejects_invalid_workspace(self):
-        project = self.client.post("/api/projects", json={"name": "Cáº§u", "workspace": {}}).json()
+        project = self.client.post("/api/projects", json={"name": "Cầu", "workspace": {}}).json()
         url = f"/api/projects/{project['id']}"
         self.assertEqual(self.client.put(url, json={"name": "New", "workspace": {}}).status_code, 422)
         invalid = self.client.put(url, json={"name": "New", "workspace": {"unknown": True}, "revision": 1})
@@ -143,7 +143,7 @@ class ProjectApiTests(unittest.TestCase):
             auth = "Basic " + base64.b64encode(b"hieu.dv:team-access").decode()
             for method, url, data in [
                 ("get", "/api/projects", None),
-                ("post", "/api/projects", {"name": "Cáº§u", "workspace": {}}),
+                ("post", "/api/projects", {"name": "Cầu", "workspace": {}}),
                 ("post", "/api/storage/cleanup", {"dry_run": False}),
                 ("delete", "/api/files/uploads/not-an-image.png", None),
             ]:

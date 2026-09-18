@@ -1,4 +1,4 @@
-﻿import { Box, LogOut, FilePlus, Save, Trash2, Archive, ChevronDown } from "lucide-react";
+import { Box, LogOut, FilePlus, Save, Trash2, Archive, ChevronDown, Pencil } from "lucide-react";
 import type { useWorkspace } from "@/hooks/useWorkspace";
 import { setAccessToken } from "@/lib/api";
 
@@ -10,7 +10,6 @@ export default function Header({ workspace: w }: HeaderProps) {
   const busy = w.isGenerating || w.isRendering || w.isUploading || w.saving || !w.isLoaded;
   const hasData = Boolean(w.source || w.renderVersions.length > 0 || w.prompt.trim());
 
-  // Export progress label helper
   const exportLabel = w.exportProgress
     ? w.exportProgress.stage === "packing"
       ? w.exportProgress.message
@@ -31,7 +30,6 @@ export default function Header({ workspace: w }: HeaderProps) {
           </span>
         </a>
 
-        {/* Cá»¥m Chá»n & Äá»•i tÃªn dá»± Ã¡n há»£p nháº¥t (Capsule) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <div 
             style={{ 
@@ -61,16 +59,16 @@ export default function Header({ workspace: w }: HeaderProps) {
               maxLength={70}
               disabled={busy}
               onChange={(event) => w.setProjectName(event.target.value)}
-              onBlur={() => { if (!w.projectName.trim()) w.setProjectName("Dá»± Ã¡n chÆ°a Ä‘áº·t tÃªn"); }}
-              placeholder="TÃªn dá»± Ã¡n..."
-              title="Báº¥m Ä‘á»ƒ Ä‘á»•i tÃªn dá»± Ã¡n"
+              onBlur={() => { if (!w.projectName.trim()) w.setProjectName("Dự án chưa đặt tên"); }}
+              placeholder="Tên dự án..."
+              title="Bấm để đổi tên dự án"
             />
             
             <div style={{ width: '1px', height: '20px', background: 'var(--border)' }}></div>
             
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '36px', height: '100%', justifyContent: 'center' }}>
               <select 
-                title="Danh sÃ¡ch dá»± Ã¡n Ä‘Ã£ lÆ°u"
+                title="Danh sách dự án đã lưu"
                 style={{ 
                   appearance: 'none',
                   position: 'absolute',
@@ -84,20 +82,19 @@ export default function Header({ workspace: w }: HeaderProps) {
                 disabled={busy} 
                 onChange={e => { if(e.target.value) void w.switchProject(e.target.value); }}
               >
-                {!w.projectId && <option value="">-- Báº£n nhÃ¡p má»›i --</option>}
+                {!w.projectId && <option value="">-- Bản nháp mới --</option>}
                 {w.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               <ChevronDown size={16} color="var(--muted)" style={{ pointerEvents: 'none' }} />
             </div>
           </div>
 
-          {/* NÃºt xÃ³a lÃ m má», áº©n mÃ¬nh, chá»‰ Ä‘á» lÃªn khi hover */}
           {w.projectId && (
             <button 
               className="button button-text" 
               onClick={() => void w.deleteCurrentProject()} 
               disabled={busy} 
-              title="XÃ³a dá»± Ã¡n nÃ y" 
+              title="Xóa dự án này" 
               style={{ 
                 padding: '0 6px', 
                 color: 'var(--muted)', 
@@ -119,16 +116,16 @@ export default function Header({ workspace: w }: HeaderProps) {
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span className="save-status" style={{ fontSize: '0.8rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
-            {w.isUploading ? "Äang lÆ°u áº£nhâ€¦" : w.saveState}
+            {w.isUploading ? "Đang lưu ảnh…" : w.saveState}
           </span>
         </div>
 
-        <button className="button button-secondary" onClick={w.resetProject} disabled={busy} title="LÃ m má»›i khÃ´ng gian lÃ m viá»‡c (Táº¡o má»›i)">
-          <FilePlus size={15} /> <span>LÃ m má»›i</span>
+        <button className="button button-secondary" onClick={w.resetProject} disabled={busy} title="Làm mới không gian làm việc (Tạo mới)">
+          <FilePlus size={15} /> <span>Làm mới</span>
         </button>
 
-        <button className="button button-secondary" onClick={() => void w.saveProject()} disabled={busy || w.conflict} title="LÆ°u dá»± Ã¡n hiá»‡n táº¡i">
-          <Save size={15} /> <span>LÆ°u</span>
+        <button className="button button-secondary" onClick={() => void w.saveProject()} disabled={busy || w.conflict} title="Lưu dự án hiện tại">
+          <Save size={15} /> <span>Lưu</span>
         </button>
 
         <div className="export-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', borderLeft: '1px solid var(--border)', paddingLeft: '12px', marginLeft: '4px' }}>
@@ -136,10 +133,10 @@ export default function Header({ workspace: w }: HeaderProps) {
             className="button button-primary"
             disabled={busy || w.isExporting || !hasData}
             onClick={() => void w.exportProject()}
-            title="Xuáº¥t thÆ° má»¥c ZIP dá»± Ã¡n"
+            title="Xuất thư mục ZIP dự án"
           >
             <Archive size={15}/> 
-            <span>{w.isExporting ? "Äang Ä‘Ã³ng gÃ³iâ€¦" : "Xuáº¥t ZIP"}</span>
+            <span>{w.isExporting ? "Đang đóng gói…" : "Xuất ZIP"}</span>
           </button>
           {w.isExporting && exportLabel && (
             <span className="export-progress" style={{ fontSize: '0.8rem', color: 'var(--muted)', position: 'absolute', top: '100%', right: '20px', background: 'var(--surface)', padding: '2px 6px', border: '1px solid var(--border)', borderRadius: '4px' }}>{exportLabel}</span>
@@ -149,8 +146,8 @@ export default function Header({ workspace: w }: HeaderProps) {
         <button 
           className="button button-text" 
           onClick={() => { setAccessToken(""); window.location.reload(); }}
-          title="ÄÄƒng xuáº¥t"
-          style={{ padding: '0 8px' }}
+          title="Đăng xuất"
+          style={{ background: 'transparent', border: 'none', outline: 'none', padding: '0 8px', cursor: 'pointer' }}
         >
           <LogOut size={16} />
         </button>
