@@ -303,3 +303,12 @@ Next.js tới FastAPI.
 Workflow `.github/workflows/docker-publish.yml` chỉ publish image sau khi workflow
 CI của commit `main` hoàn thành thành công. API key OpenAI không được đưa vào image
 hoặc GitHub Actions build.
+
+
+## Production Skill
+
+Tài liệu chuẩn để phát triển và triển khai InfraRenderAI:
+
+- [SKILL_InfraRenderAI_Production_Agent](docs/SKILL_InfraRenderAI_Production_Agent.md)
+
+Mọi thay đổi production nên được đối chiếu với Skill này trước khi merge/deploy.
