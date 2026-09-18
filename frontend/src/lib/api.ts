@@ -59,8 +59,16 @@ export function uploadImage(file: File, signal: AbortSignal) {
   return apiRequest<UploadResponse>("/api/upload-image", { method: "POST", body, signal });
 }
 
+export type RenderRequest = {
+  prompt: string;
+  negative_prompt: string;
+  reference_image_name: string;
+  settings: Record<string, unknown>;
+  project_name: string;
+};
+
 export function requestRender(
-  request: any,
+  request: RenderRequest,
   signal: AbortSignal,
 ) {
   return apiRequest<RenderResponse>("/api/render-image", {
