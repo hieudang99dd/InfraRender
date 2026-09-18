@@ -78,7 +78,7 @@ test("media proxy streams images through the app origin", async (context) => {
   assert.equal(await response.text(), "png bytes");
 });
 
-test("unavailable backend explains how to start services and never retries", async (context) => {
+test("unavailable backend returns a safe operational message and never retries", async (context) => {
   setup(context);
   const mock = context.mock.method(globalThis, "fetch", async () => {
     throw new TypeError("private network details");
