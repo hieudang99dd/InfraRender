@@ -10,4 +10,4 @@ async function handle(request: Request, context: Context) {
   return proxyBackend(request, path);
 }
 
-export { handle as GET, handle as POST };
+export { handle as GET, handle as POST, handle as DELETE };
