@@ -11,7 +11,9 @@
 }
 
 {$INFRARENDER_DOMAIN} {
-    basic_auth {
+    @protected not path /api/health
+
+    basic_auth @protected {
         {$INFRARENDER_BASIC_AUTH_USER} {$INFRARENDER_BASIC_AUTH_HASH}
     }
 
