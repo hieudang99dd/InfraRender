@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import type { ImageChangePayload } from "@/components/workspace/ImageCanvas";
-import { apiRequest, uploadImage, requestRender, type PromptMode, type PromptResponse, type RenderResponse } from "@/lib/api";
+import { apiRequest, getBackendUrl, uploadImage, requestRender, type PromptMode, type PromptResponse, type RenderResponse } from "@/lib/api";
 import { DEFAULT_SETTINGS, toPromptRequest, type RenderSettings } from "@/lib/render-settings";
 import { downloadPrompt, promptSignature, type PromptVersion, type RenderVersion, type StoredSource } from "@/lib/workspace";
 import { emptyWorkspace, restoreRender, type WorkspaceState } from "@/lib/workspace-state";
@@ -132,7 +132,15 @@ export function useWorkspace() {
   }
   async function resetProject() {
     if(isGenerating || isRendering || isUploading)return;
-    if(await persistence.newProject()){clearPreview();setProjectRevision(v=>v+1);setError("");setNotice("Dự án trước đã được giữ trong danh sách.");}
+    const success = await persistence.newProject();
+    if(success) {
+      clearPreview();setProjectRevision(v=>v+1);setError("");setNotice("Dự án trước đã được giữ trong danh sách.");
+    } else {
+      if (window.confirm("Không thể lưu dự án hiện tại do lỗi đồng bộ. Bạn có chắc chắn muốn bỏ qua bản nháp này và tạo dự án mới không?")) {
+        try { localStorage.removeItem(`infrarender.workspace.v2:${getBackendUrl()}`); } catch {}
+        window.location.reload();
+      }
+    }
   }
   async function exportProject(snapshot: WorkspaceState = data) {
     if(isExporting)return;

@@ -1,4 +1,4 @@
-import { Box, LogOut, FilePlus, Save, Trash2, Archive, ChevronDown } from "lucide-react";
+import { Box, LogOut, FilePlus, Save, Trash2, Archive, ChevronDown, AlertCircle } from "lucide-react";
 import type { useWorkspace } from "@/hooks/useWorkspace";
 import { setAccessToken } from "@/lib/api";
 
@@ -112,7 +112,12 @@ export default function Header({ workspace: w }: HeaderProps) {
       </div>
 
       <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
-        {w.saveError && <span className="save-status error" style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>{w.saveError}</span>}
+        {w.saveError && (
+          <div title={w.saveError} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--danger)', fontSize: '0.85rem', fontWeight: 500, background: 'var(--danger-alpha, rgba(239,68,68,0.1))', padding: '4px 8px', borderRadius: '6px' }}>
+            <AlertCircle size={15} />
+            <span>Lỗi đồng bộ</span>
+          </div>
+        )}
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span className="save-status" style={{ fontSize: '0.8rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
