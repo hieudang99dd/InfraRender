@@ -13,7 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate operations scripts
-        run: bash -n ops/*.sh
+        run: |
+          bash -n ops/*.sh
+          shellcheck ops/*.sh
       - name: Scan repository for critical vulnerabilities, secrets and misconfiguration
         uses: aquasecurity/trivy-action@v0.36.0
         with:
