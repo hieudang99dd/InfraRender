@@ -1,11 +1,11 @@
 """Create consistent visualization prompts from the API's validated settings."""
 
-import os
 import json
 import logging
 import asyncio
 import httpx
 from schemas import PromptRequest
+from services.config import env_or_file
 
 logger = logging.getLogger(__name__)
 
@@ -184,9 +184,9 @@ async def build_render_prompt(data: PromptRequest, image_base64: str | None = No
     if not image_base64:
         return rule_based_prompt
 
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").strip().rstrip("/")
-    vision_model = os.getenv("OPENAI_VISION_MODEL", "gpt-4o-mini").strip()
+    api_key = env_or_file("OPENAI_API_KEY")
+    base_url = env_or_file("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    vision_model = env_or_file("OPENAI_VISION_MODEL", "gpt-4o-mini")
 
     if not api_key or not base_url:
         return rule_based_prompt
