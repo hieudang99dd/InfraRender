@@ -74,31 +74,32 @@ test("uploads send the original File as multipart data without overriding its bo
   assert.equal((await uploadImage(file, new AbortController().signal)).status, "success");
 });
 
-test("render sends the reference and edited prompts without reapplying settings", async (context) => {
-  const file = new File(["reference bytes"], "street.png", { type: "image/png" });
+test("render sends the uploaded reference name and edited prompts as JSON", async (context) => {
+  const request = {
+    prompt: "My edited scene.",
+    negative_prompt: "No billboards.",
+    reference_image_name: "street.png",
+    settings: { weather: "sunny weather" },
+    project_name: "Street study",
+  };
   context.mock.method(globalThis, "fetch", async (url, options) => {
     assert.match(url, /\/api\/render-image$/);
     assert.equal(options.method, "POST");
-    assert.equal(options.headers, undefined);
-    assert.deepEqual([...options.body.keys()], ["file", "prompt", "negative_prompt"]);
-    assert.equal(await options.body.get("file").text(), "reference bytes");
-    assert.equal(options.body.get("prompt"), "My edited scene.");
-    assert.equal(options.body.get("negative_prompt"), "No billboards.");
+    assert.equal(options.headers["Content-Type"], "application/json");
+    assert.deepEqual(JSON.parse(options.body), request);
     return Response.json({
       status: "success",
       url: "/outputs/test.png",
       name: "test.png",
       width: 1024,
       height: 1024,
+      provider: "OpenAI Images",
+      model: "gpt-image-2",
     });
   });
-  const result = await requestRender(
-    file,
-    "  My edited scene.  ",
-    " No billboards. ",
-    new AbortController().signal,
-  );
+  const result = await requestRender(request, new AbortController().signal);
   assert.equal(result.url, "/outputs/test.png");
+  assert.equal(result.provider, "OpenAI Images");
 });
 
 test("render configuration failure is readable and does not retry", async (context) => {
@@ -106,7 +107,16 @@ test("render configuration failure is readable and does not retry", async (conte
     Response.json({ detail: "Chưa cấu hình dịch vụ render." }, { status: 503 }),
   );
   await assert.rejects(
-    requestRender(new File(["image"], "test.png"), "Scene", "", new AbortController().signal),
+    requestRender(
+      {
+        prompt: "Scene",
+        negative_prompt: "",
+        reference_image_name: "test.png",
+        settings: {},
+        project_name: "Test",
+      },
+      new AbortController().signal,
+    ),
     /Chưa cấu hình dịch vụ render/,
   );
   assert.equal(mock.mock.callCount(), 1);
