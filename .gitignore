@@ -88,3 +88,8 @@ backend/generated/
 # -----------------------------
 secrets/*
 !secrets/README.md
+
+# Production deployment state
+.deploy-current
+.deploy-previous
+backups/
