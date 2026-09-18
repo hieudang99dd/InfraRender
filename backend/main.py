@@ -160,45 +160,54 @@ async def create_render(
 ) -> RenderResponse:
     """Render the actual source image using the standardized RenderRequest contract."""
     render_prompt(data.prompt, data.negative_prompt)
-        status = render_status()
-        if not status["configured"]:
-            raise HTTPException(503, status["message"])
-            
-        image_path = UPLOAD_DIR / data.reference_image_name
-        if not image_path.is_file():
-            raise HTTPException(404, "Không tìm thấy ảnh tham chiếu trên máy chủ. Vui lòng tải lại ảnh.")
-            
-        content = await run_in_threadpool(image_path.read_bytes)
-        
-        # The saved extension is authoritative here; let validate_image detect the MIME type.
-        metadata = await run_in_threadpool(
-            validate_image, content, data.reference_image_name, None
+
+    status = render_status()
+    if not status["configured"]:
+        raise HTTPException(503, status["message"])
+
+    image_path = UPLOAD_DIR / data.reference_image_name
+    if not image_path.is_file():
+        raise HTTPException(
+            404,
+            "Không tìm thấy ảnh tham chiếu trên máy chủ. Vui lòng tải lại ảnh.",
         )
-        result, result_metadata = await render_image(content, metadata, data.prompt, data.negative_prompt)
-        name = f"{uuid4().hex}.png"
-        save_path = OUTPUT_DIR / name
+
+    content = await run_in_threadpool(image_path.read_bytes)
+
+    # The saved extension is authoritative here; let validate_image detect the MIME type.
+    metadata = await run_in_threadpool(
+        validate_image, content, data.reference_image_name, None
+    )
+    result, result_metadata = await render_image(
+        content, metadata, data.prompt, data.negative_prompt
+    )
+
+    name = f"{uuid4().hex}.png"
+    save_path = OUTPUT_DIR / name
+    try:
+        await run_in_threadpool(save_path.write_bytes, result)
+    except OSError as exc:
+        logger.exception("Failed to save generated image")
         try:
-            await run_in_threadpool(save_path.write_bytes, result)
-        except OSError as exc:
-            logger.exception("Failed to save generated image")
-            try:
-                save_path.unlink(missing_ok=True)
-            except OSError:
-                logger.exception("Failed to remove incomplete generated image")
-            raise HTTPException(500, "Không thể lưu ảnh kết quả trên máy chủ.") from exc
-        url = (
-            f"{PUBLIC_BASE_URL}/outputs/{name}"
-            if PUBLIC_BASE_URL
-            else str(request.url_for("outputs", path=name))
-        )
-        return RenderResponse(
-            url=url,
-            name=name,
-            width=result_metadata.width,
-            height=result_metadata.height,
-            provider=result_metadata.provider,
-            model=result_metadata.model,
-        )
+            save_path.unlink(missing_ok=True)
+        except OSError:
+            logger.exception("Failed to remove incomplete generated image")
+        raise HTTPException(500, "Không thể lưu ảnh kết quả trên máy chủ.") from exc
+
+    url = (
+        f"{PUBLIC_BASE_URL}/outputs/{name}"
+        if PUBLIC_BASE_URL
+        else str(request.url_for("outputs", path=name))
+    )
+    return RenderResponse(
+        url=url,
+        name=name,
+        width=result_metadata.width,
+        height=result_metadata.height,
+        provider=result_metadata.provider,
+        model=result_metadata.model,
+    )
+
 
 @app.delete("/api/files/{directory}/{filename}")
 async def delete_file(directory: str, filename: str) -> dict:
