@@ -1,0 +1,52 @@
+
+.bar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  height: 64px;
+  z-index: 50;
+  box-shadow: 0 -4px 13px rgba(0,0,0,0.2);
+}
+
+.statusGroup {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.statusItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.statusItem.ready {
+  color: var(--success);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.statusItem.ready .dot {
+  background: var(--success);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}

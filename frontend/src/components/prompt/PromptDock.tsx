@@ -110,11 +110,11 @@ export default function PromptDock({
           <span className="section-icon">
             <FileText size={17} />
           </span>
-          <h2 id="prompt-title">Soạn Chỉ thị Thiết kế (Prompt)</h2>
+          <h2 id="prompt-title">Prompt thiết kế</h2>
         </div>
       </div>
       <div className="prompt-content">
-        <label className="field-label" htmlFor="prompt-engine">Phương thức Chỉ thị</label>
+        <label className="field-label" htmlFor="prompt-engine">Phương thức tạo prompt</label>
         <select id="prompt-engine" className="prompt-engine-select" value={promptMode} onChange={e=>onPromptModeChange(e.target.value as PromptMode)} disabled={isGenerating||isRendering}>
           <option value="template">Theo thiết lập — không gọi AI</option>
           <option value="refine">AI tinh chỉnh mô tả</option>
@@ -145,7 +145,7 @@ export default function PromptDock({
                 resetCopyFeedback();
               }}
             >
-              Chỉ thị gốc
+              Prompt
             </button>
             <button
               type="button"
@@ -177,15 +177,15 @@ export default function PromptDock({
                 resetCopyFeedback();
               }}
               disabled={!currentText && !(mode === "prompt" && isGenerating)}
-              aria-label={mode === "prompt" ? "Xóa Chỉ thị chính" : "Xóa nội dung loại trừ"}
+              aria-label={mode === "prompt" ? "Xóa prompt chính" : "Xóa nội dung loại trừ"}
             >
               <Trash2 size={14} />
-              {mode === "prompt" ? "Xóa Chỉ thị" : "Xóa loại trừ"}
+              {mode === "prompt" ? "Xóa prompt" : "Xóa loại trừ"}
             </button>
           </div>
         </div>
         <label htmlFor="prompt-text" className="sr-only">
-          {mode === "prompt" ? "Chỉ dẫn phối cảnh chính" : "Nội dung loại trừ"}
+          {mode === "prompt" ? "Prompt phối cảnh chính" : "Nội dung loại trừ"}
         </label>
         <textarea
           id="prompt-text"
@@ -200,7 +200,7 @@ export default function PromptDock({
           }}
           placeholder={
             mode === "prompt"
-              ? "Tự soạn hoặc nhấn Tổng hợp Chỉ thị để AI tạo nội dung tự động. Nhấn Kết xuất (Render) khi chỉ dẫn đã phù hợp."
+              ? "Tự soạn hoặc nhấn Tạo prompt để AI tạo nội dung tự động. Nhấn Render ảnh khi chỉ dẫn đã phù hợp."
               : "Nhập những chi tiết bạn không muốn xuất hiện trong phối cảnh. Để trống nếu không có yêu cầu loại trừ."
           }
         />
@@ -211,7 +211,7 @@ export default function PromptDock({
               : isGenerating
                 ? promptMode === "template" ? "Đang tổng hợp thiết lập…" : "AI đang xử lý yêu cầu…"
                 : mode === "prompt"
-                  ? "Chỉ dẫn phối cảnh · Có thể chỉnh sửa"
+                  ? "Prompt phối cảnh · Có thể chỉnh sửa"
                   : "Những chi tiết cần tránh trong kết quả"}
           </span>
           <span>{currentText.length.toLocaleString("vi-VN")} ký tự</span>
@@ -263,13 +263,13 @@ export default function PromptDock({
               aria-busy={isGenerating}
             >
               {isGenerating ? <LoaderCircle size={15} className="spin" /> : <Sparkles size={15} />}
-              {isGenerating ? "Đang tổng hợp…" : prompt ? "Cập nhật Chỉ thị" : "Tổng hợp Chỉ thị"}
+              {isGenerating ? "Đang tổng hợp…" : prompt ? "Cập nhật prompt" : "Tạo prompt"}
             </button>
           </div>
         </div>
         <div className="render-action-row">
           <div className="render-service-copy">
-            <strong>Kết xuất (Render)</strong>
+            <strong>Render ảnh</strong>
             <p aria-live="polite">
               {isRendering
                 ? "Đang khởi tạo kết xuất (Rendering), vui lòng chờ…"
@@ -310,7 +310,7 @@ export default function PromptDock({
             aria-busy={isRendering}
           >
             {isRendering ? <LoaderCircle size={17} className="spin" /> : <WandSparkles size={17} />}
-            {isRendering ? "Đang kết xuất..." : "Kết xuất (Render)"}
+            {isRendering ? "Đang render..." : "Render ảnh"}
           </button>
         </div>
       </div>

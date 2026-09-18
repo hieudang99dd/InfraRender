@@ -2,6 +2,7 @@
 
 import Header from "@/components/layout/Header";
 import RightPanel from "@/components/layout/RightPanel";
+import WorkflowBar from "@/components/workspace/WorkflowBar";
 import ImageCanvas from "@/components/workspace/ImageCanvas";
 import PromptDock from "@/components/prompt/PromptDock";
 import OutputHistory from "@/components/output/OutputHistory";
@@ -135,8 +136,21 @@ export default function Home() {
                 />
               </div>
             )}
+
           </div>
+          
+          <WorkflowBar
+            hasSource={Boolean(workspace.source)}
+            hasPrompt={Boolean(workspace.prompt.trim())}
+            isGenerating={workspace.isGenerating}
+            isRendering={workspace.isRendering}
+            canGenerate={Boolean(workspace.source && "saved_name" in workspace.source) && !workspace.isUploading}
+            canRender={Boolean(workspace.source && "saved_name" in workspace.source) && !workspace.isUploading && Boolean(workspace.prompt.trim())}
+            onGenerate={workspace.generatePrompt}
+            onRender={workspace.renderImage}
+          />
         </main>
+
       </div>
       </fieldset>
     </div>

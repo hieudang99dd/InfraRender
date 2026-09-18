@@ -158,6 +158,60 @@ function PreservationChoice({
   );
 }
 
+
+const QUICK_PRESETS = [
+  {
+    id: "hien_trang",
+    label: "Hiện trạng",
+    apply: (settings: RenderSettings): RenderSettings => ({
+      ...settings,
+      preserve_geometry: true,
+      creativity: 1,
+      style: "photorealistic visualization"
+    })
+  },
+  {
+    id: "ban_ngay",
+    label: "Ban ngày",
+    apply: (settings: RenderSettings): RenderSettings => ({
+      ...settings,
+      weather: WEATHER_VALUES.sunny,
+      lighting: LIGHTING_VALUES.natural,
+      style: "photorealistic visualization"
+    })
+  },
+  {
+    id: "hoang_hon",
+    label: "Hoàng hôn",
+    apply: (settings: RenderSettings): RenderSettings => ({
+      ...settings,
+      weather: WEATHER_VALUES.sunset,
+      lighting: LIGHTING_VALUES.golden,
+      style: "photorealistic visualization"
+    })
+  },
+  {
+    id: "ban_dem",
+    label: "Ban đêm",
+    apply: (settings: RenderSettings): RenderSettings => ({
+      ...settings,
+      weather: WEATHER_VALUES.night,
+      lighting: LIGHTING_VALUES.night,
+      style: "photorealistic visualization"
+    })
+  },
+  {
+    id: "canh_quan",
+    label: "Cảnh quan xanh",
+    apply: (settings: RenderSettings): RenderSettings => ({
+      ...settings,
+      vegetation: "tropical vegetation",
+      vegetation_density: "dense",
+      style: "photorealistic visualization"
+    })
+  }
+];
+
 export default function RightPanel({
   settings,
   onChange,
@@ -238,7 +292,26 @@ export default function RightPanel({
       </header>
 
       <fieldset className={styles.settings} disabled={isBusy} aria-label="Thông số thiết kế">
-        <p className={styles.selectionHint}>
+        
+          <div className={styles.quickPresets}>
+            <p className={styles.presetLabel}>Preset nhanh</p>
+            <div className={styles.presetList}>
+              {QUICK_PRESETS.map(preset => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className={styles.presetChip}
+                  disabled={isBusy}
+                  onClick={() => onChange(preset.apply(settings))}
+                  title={`Áp dụng preset: ${preset.label}`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className={styles.selectionHint}>
+
           Chọn thông số hoặc thêm từ khóa riêng. Nhấn lại một lựa chọn để bỏ chọn.
         </p>
         <SettingSection
@@ -320,10 +393,10 @@ export default function RightPanel({
         <SettingSection title="Thời tiết & khí hậu" icon={<CloudSun size={17} />} defaultOpen>
           {choices("weather", "Thời tiết & khí hậu", true)}
         </SettingSection>
-        <SettingSection title="Ánh sáng" icon={<Lightbulb size={17} />} defaultOpen>
+        <SettingSection title="Ánh sáng" icon={<Lightbulb size={17} />}>
           {choices("lighting", "Ánh sáng")}
         </SettingSection>
-        <SettingSection title="Cây xanh & cảnh quan" icon={<Leaf size={17} />} defaultOpen>
+        <SettingSection title="Cây xanh & cảnh quan" icon={<Leaf size={17} />}>
           <p className={styles.fieldLabel}>Loại thảm thực vật</p>
           {choices("vegetation", "Loại thảm thực vật")}
           <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ phủ xanh</p>
