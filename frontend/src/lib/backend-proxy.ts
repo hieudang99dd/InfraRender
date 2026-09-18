@@ -1,4 +1,53 @@
-import { checkRateLimit } from "@/lib/rate-limit";
+type RateRule = { limit: number; windowMs: number };
+type RateBucket = { count: number; resetAt: number };
+
+const TEN_MINUTES = 10 * 60 * 1000;
+const RATE_RULES: Record<string, RateRule> = {
+  "upload-image": { limit: 60, windowMs: TEN_MINUTES },
+  "generate-prompt": { limit: 120, windowMs: TEN_MINUTES },
+  "render-image": { limit: 12, windowMs: TEN_MINUTES },
+  "render-status/check": { limit: 30, windowMs: TEN_MINUTES },
+  "files:DELETE": { limit: 120, windowMs: TEN_MINUTES },
+};
+const rateBuckets = new Map<string, RateBucket>();
+
+function rateLimitKey(request: Request, path: string) {
+  const route =
+    request.method === "DELETE" && path.startsWith("files/") ? "files:DELETE" : path;
+  const forwarded = request.headers.get("x-forwarded-for");
+  const client =
+    forwarded?.split(",")[0]?.trim() || request.headers.get("x-real-ip")?.trim() || "unknown";
+  return { route, client };
+}
+
+export function checkRateLimit(request: Request, path: string) {
+  const { route, client } = rateLimitKey(request, path);
+  const rule = RATE_RULES[route];
+  if (!rule) return null;
+
+  const now = Date.now();
+  const key = `${route}:${client}`;
+  const current = rateBuckets.get(key);
+  if (!current || current.resetAt <= now) {
+    rateBuckets.set(key, { count: 1, resetAt: now + rule.windowMs });
+    return null;
+  }
+  if (current.count >= rule.limit) {
+    return { retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - now) / 1000)) };
+  }
+  current.count += 1;
+
+  if (rateBuckets.size > 5000) {
+    for (const [bucketKey, bucket] of rateBuckets) {
+      if (bucket.resetAt <= now) rateBuckets.delete(bucketKey);
+    }
+  }
+  return null;
+}
+
+export function resetRateLimitsForTests() {
+  rateBuckets.clear();
+}
 
 // Server-side only: imported by the API route, never by browser components.
 const MAX_UPLOAD_REQUEST_BYTES = 21 * 1024 * 1024;
@@ -165,6 +214,7 @@ export async function proxyBackend(request: Request, segments: string[]): Promis
       return failure(
         "Dịch vụ trả về dữ liệu không hợp lệ. Kiểm tra địa chỉ backend rồi thử lại.",
         502,
+        requestId,
       );
     }
     // Keep stored images reachable from the same origin, including on LAN and HTTPS.
@@ -185,7 +235,7 @@ export async function proxyBackend(request: Request, segments: string[]): Promis
         requestId,
       );
     return failure(
-      "Chưa kết nối được máy chủ xử lý. Chạy start.cmd trong thư mục dự án để khởi động dịch vụ, rồi nhấn kiểm tra lại.",
+      "Chưa kết nối được máy chủ xử lý. Kiểm tra trạng thái dịch vụ rồi thử lại.",
       503,
       requestId,
     );
