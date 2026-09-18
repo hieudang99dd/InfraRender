@@ -11,6 +11,10 @@
 }
 
 {$INFRARENDER_DOMAIN} {
+    basic_auth {
+        {$INFRARENDER_BASIC_AUTH_USER} {$INFRARENDER_BASIC_AUTH_HASH}
+    }
+
     encode zstd gzip
 
     request_body {
