@@ -98,8 +98,17 @@ export function useProjectPersistence(data: WorkspaceState, setData: Dispatch<Se
         }
         return !busy.current;
       } catch(err) {
-        if(alive.current) {
-          const collided=err instanceof ApiError && err.status===409;
+          if(alive.current) {
+            if (err instanceof ApiError && err.status === 404) {
+              identity.current = null;
+              conflictRef.current = false;
+              setConflict(false);
+              setProjectId(null);
+              // Restart saveProject to create new project instead of hanging
+              setTimeout(() => void saveProject(), 0);
+              return false;
+            }
+            const collided=err instanceof ApiError && err.status===409;
           conflictRef.current=collided; setConflict(collided);
           setSaveError(collided?"Dự án đã thay đổi ở nơi khác hoặc ảnh tham chiếu không còn. Tải bản máy chủ hoặc lưu thành bản sao; bản nháp hiện tại vẫn được giữ.":err instanceof Error?err.message:"Không thể lưu dự án.");
           setSaveState("Chưa lưu trên máy chủ");

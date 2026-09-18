@@ -9,7 +9,7 @@ import RenderResult from "@/components/output/RenderResult";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import LoginScreen from "@/components/layout/LoginScreen";
 import { useEffect, useState } from "react";
-import { apiRequest, getAccessToken } from "@/lib/api";
+import { apiRequest, getAccessToken, getBackendUrl } from "@/lib/api";
 
 export default function Home() {
   const workspace = useWorkspace();
@@ -36,7 +36,10 @@ export default function Home() {
   }, []);
 
   if (!isAuthenticated) {
-    return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} isChecking={isCheckingAuth} />;
+    return <LoginScreen onLoginSuccess={() => {
+      try { localStorage.removeItem(`infrarender.workspace.v2:${getBackendUrl()}`); } catch (e) {}
+      window.location.reload();
+    }} isChecking={isCheckingAuth} />;
   }
 
   return (
