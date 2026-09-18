@@ -7,7 +7,6 @@ import PromptDock from "@/components/prompt/PromptDock";
 import OutputHistory from "@/components/output/OutputHistory";
 import RenderResult from "@/components/output/RenderResult";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import ProjectBar from "@/components/workspace/ProjectBar";
 import LoginScreen from "@/components/layout/LoginScreen";
 import { useEffect, useState } from "react";
 import { apiRequest, getAccessToken } from "@/lib/api";
@@ -47,15 +46,8 @@ export default function Home() {
       </a>
 
       <fieldset className="workspace-fieldset" disabled={!workspace.isLoaded}>
-      <Header
-        projectName={workspace.projectName}
-        onProjectNameChange={workspace.setProjectName}
-        onRefresh={workspace.resetProject}
-        onExport={workspace.exportPrompt}
-        canExport={Boolean(workspace.prompt.trim())}
-      />
-      <ProjectBar workspace={workspace}/>
-
+      <Header workspace={workspace} />
+      
       <div className="app-shell">
         <main className="studio" id="workspace" tabIndex={-1}>
           <h1 className="sr-only">Không gian làm việc InfraRender</h1>
