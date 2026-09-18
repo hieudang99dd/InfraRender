@@ -79,43 +79,50 @@ export function useProjectPersistence(data: WorkspaceState, setData: Dispatch<Se
     const task=(async()=>{
       await Promise.resolve();
       setSaving(true); setSaveError("");
-      try {
-        while(alive.current && !busy.current) {
-          const snapshot=current.current, serialized=JSON.stringify(snapshot);
-          if(serialized===synced.current)break;
-          if(!identity.current && serialized===JSON.stringify(emptyWorkspace(DEFAULT_SETTINGS)))break;
-          setSaveState("Đang lưu…");
-          const previous=identity.current;
-          const doc=await apiRequest<ProjectDocument>(previous?`/api/projects/${previous.id}`:"/api/projects",{
-            method:previous?"PUT":"POST",headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({name:snapshot.projectName.trim()||"Dự án chưa đặt tên",workspace:snapshot,revision:previous?.revision})
-          });
-          identity.current={id:doc.id,revision:doc.revision}; synced.current=serialized;
-          if(!alive.current)return true;
-          setProjectId(doc.id); setSaveState("Đã lưu trên máy chủ");
-          setProjects(list=>[{id:doc.id,name:doc.name,revision:doc.revision,updated_at:doc.updated_at},...list.filter(p=>p.id!==doc.id)]);
-          writeDraft(current.current);
-        }
-        return !busy.current;
-      } catch(err) {
+      
+      let retryLoop = true;
+      while (retryLoop) {
+        retryLoop = false;
+        try {
+          while(alive.current && !busy.current) {
+            const snapshot=current.current, serialized=JSON.stringify(snapshot);
+            if(serialized===synced.current)break;
+            if(!identity.current && serialized===JSON.stringify(emptyWorkspace(DEFAULT_SETTINGS)))break;
+            setSaveState("Đang lưu…");
+            const previous=identity.current;
+            const doc=await apiRequest<ProjectDocument>(previous?`/api/projects/${previous.id}`:"/api/projects",{
+              method:previous?"PUT":"POST",headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({name:snapshot.projectName.trim()||"Dự án chưa đặt tên",workspace:snapshot,revision:previous?.revision})
+            });
+            identity.current={id:doc.id,revision:doc.revision}; synced.current=serialized;
+            if(!alive.current)return true;
+            setProjectId(doc.id); setSaveState("Đã lưu trên máy chủ");
+            setProjects(list=>[{id:doc.id,name:doc.name,revision:doc.revision,updated_at:doc.updated_at},...list.filter(p=>p.id!==doc.id)]);
+            writeDraft(current.current);
+          }
+          return !busy.current;
+        } catch(err) {
           if(alive.current) {
             if (err instanceof ApiError && err.status === 404) {
               identity.current = null;
               conflictRef.current = false;
               setConflict(false);
               setProjectId(null);
-              // Restart saveProject to create new project instead of hanging
-              return false;
+              setSaveError(""); // Clear the error so it doesn't flash
+              retryLoop = true; // Retry the loop, which will POST as a new project
+              continue;
             }
             const collided=err instanceof ApiError && err.status===409;
-          conflictRef.current=collided; setConflict(collided);
-          setSaveError(collided?"Dự án đã thay đổi ở nơi khác hoặc ảnh tham chiếu không còn. Tải bản máy chủ hoặc lưu thành bản sao; bản nháp hiện tại vẫn được giữ.":err instanceof Error?err.message:"Không thể lưu dự án.");
-          setSaveState("Chưa lưu trên máy chủ");
-          writeDraft(current.current);
+            conflictRef.current=collided; setConflict(collided);
+            setSaveError(collided?"Dự án đã thay đổi ở nơi khác hoặc ảnh tham chiếu không còn. Tải bản máy chủ hoặc lưu thành bản sao; bản nháp hiện tại vẫn được giữ.":err instanceof Error?err.message:"Không thể lưu dự án.");
+            setSaveState("Chưa lưu trên máy chủ");
+            writeDraft(current.current);
+          }
+          return false;
         }
-        return false;
-      } finally { pending.current=null; if(alive.current)setSaving(false); }
-    })();
+      }
+      return false;
+    })().finally(() => { pending.current=null; if(alive.current)setSaving(false); });
     pending.current=task;
     return task;
   },[writeDraft]);
