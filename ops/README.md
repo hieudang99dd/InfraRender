@@ -14,6 +14,18 @@ The provided systemd units assume the repository is checked out at:
 The production `.env` and `secrets/openai_api_key.txt` stay on the server and
 are not committed to Git.
 
+## Preflight
+
+Before the first deploy, validate the VPS configuration:
+
+```bash
+bash ops/preflight.sh
+```
+
+Preflight verifies the production `.env`, OpenAI secret file, Docker daemon,
+Docker Compose, domain format, Basic Auth bcrypt hash and the final deploy Compose
+configuration. `ops/deploy.sh` runs this automatically before changing containers.
+
 ## Deploy
 
 Deploy the image tag configured in `.env`:
