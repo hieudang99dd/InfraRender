@@ -2,6 +2,7 @@
 set -euo pipefail
 
 BACKUP_ROOT="${1:-./backups}"
+RETENTION_DAYS="${INFRARENDER_BACKUP_RETENTION_DAYS:-14}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 DEST="${BACKUP_ROOT%/}/${STAMP}"
 mkdir -p "$DEST"
@@ -25,5 +26,9 @@ backup_volume infrarender_outputs
     echo "host=$(hostname)"
   } > metadata.txt
 )
+
+if [[ "$RETENTION_DAYS" =~ ^[0-9]+$ ]] && [ "$RETENTION_DAYS" -gt 0 ]; then
+  find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -mtime +"$RETENTION_DAYS" -exec rm -rf {} +
+fi
 
 echo "Backup created: $DEST_ABS"
