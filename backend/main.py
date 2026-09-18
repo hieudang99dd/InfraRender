@@ -68,16 +68,20 @@ app = FastAPI(title="InfraRender AI Backend", version=VERSION, lifespan=lifespan
 async def api_access(request: Request, call_next):
     public = {"/", "/health", "/api/health", "/api/render-status"}
     if request.url.path.startswith("/api/") and request.url.path not in public and request.method != "OPTIONS":
-        auth_pass = env_or_file("INFRARENDER_AUTH_PASS")
-        auth_user = os.getenv("INFRARENDER_AUTH_USER", "hieu.dv").strip()
-        
-        if os.getenv("INFRARENDER_AUTH_PASS_FILE", "").strip() and not auth_pass:
-            return JSONResponse({"detail": "Mật khẩu máy chủ chưa được cấu hình hợp lệ."}, status_code=503)
-        supplied = request.headers.get("Authorization", "")
-        if auth_pass:
-            expected = f"Basic {base64.b64encode(f'{auth_user}:{auth_pass}'.encode()).decode()}"
-            if not hmac.compare_digest(supplied.encode(), expected.encode()):
-                return JSONResponse({"detail": "Tài khoản hoặc mật khẩu không đúng."}, status_code=401)
+        if request.url.path.startswith("/api/files/") and request.method == "GET":
+            pass # Allow unauthenticated image fetching (capability URLs)
+        else:
+            auth_pass = env_or_file("INFRARENDER_AUTH_PASS")
+            auth_user = os.getenv("INFRARENDER_AUTH_USER", "hieu.dv").strip()
+            
+            if os.getenv("INFRARENDER_AUTH_PASS_FILE", "").strip() and not auth_pass:
+                return JSONResponse({"detail": "Mật khẩu máy chủ chưa được cấu hình hợp lệ."}, status_code=503)
+                
+            supplied = request.headers.get("Authorization", "")
+            if auth_pass:
+                expected = f"Basic {base64.b64encode(f'{auth_user}:{auth_pass}'.encode()).decode()}"
+                if not hmac.compare_digest(supplied.encode(), expected.encode()):
+                    return JSONResponse({"detail": "Tài khoản hoặc mật khẩu không đúng."}, status_code=401)
     if request.headers.get("content-type", "").startswith("application/json"):
         body = bytearray()
         async for chunk in request.stream():
