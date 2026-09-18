@@ -65,7 +65,7 @@
 .login-form input[type="password"]:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); /* Adjust alpha if primary is different */
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .login-form input::placeholder {
@@ -139,7 +139,7 @@
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
-  background-color: var(--accent), #3b82f6);
+  background-color: var(--accent);
   color: white;
   border: none;
   transition: opacity 0.2s, transform 0.1s;
