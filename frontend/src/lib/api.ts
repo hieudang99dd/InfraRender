@@ -71,7 +71,7 @@ export async function apiRequest<T>(
   const backend = getBackendUrl();
   const token = getAccessToken();
   const headers = token ? new Headers(options.headers) : options.headers;
-  if (token) (headers as Headers).set("Authorization", `Bearer ${token}`);
+  if (token) (headers as Headers).set("Authorization", token);
   const signal = options.signal
     ? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)])
     : AbortSignal.timeout(timeoutMs);

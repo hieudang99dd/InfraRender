@@ -1,5 +1,6 @@
 """InfraRender API with durable project storage and a separate static frontend."""
 import asyncio
+import base64
 import hmac
 import logging
 import os
@@ -40,8 +41,8 @@ provider_slots = asyncio.Semaphore(2)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if os.getenv("INFRARENDER_ENV") == "production":
-        if len(env_or_file("INFRARENDER_ACCESS_TOKEN")) < 32:
-            raise RuntimeError("Production requires INFRARENDER_ACCESS_TOKEN with at least 32 characters.")
+        if len(env_or_file("INFRARENDER_AUTH_PASS")) < 12:
+            raise RuntimeError("Production requires INFRARENDER_AUTH_PASS with at least 12 characters.")
         if not PUBLIC_BASE_URL.startswith("https://") or not CORS_ORIGINS or "*" in CORS_ORIGINS:
             raise RuntimeError("Production requires an HTTPS public backend URL and explicit CORS origins.")
     async def retain_files():
@@ -67,12 +68,16 @@ app = FastAPI(title="InfraRender AI Backend", version=VERSION, lifespan=lifespan
 async def api_access(request: Request, call_next):
     public = {"/", "/health", "/api/health", "/api/render-status"}
     if request.url.path.startswith("/api/") and request.url.path not in public and request.method != "OPTIONS":
-        token = env_or_file("INFRARENDER_ACCESS_TOKEN")
-        if os.getenv("INFRARENDER_ACCESS_TOKEN_FILE", "").strip() and not token:
-            return JSONResponse({"detail": "Mã truy cập máy chủ chưa được cấu hình hợp lệ."}, status_code=503)
+        auth_pass = env_or_file("INFRARENDER_AUTH_PASS")
+        auth_user = os.getenv("INFRARENDER_AUTH_USER", "admin").strip()
+        
+        if os.getenv("INFRARENDER_AUTH_PASS_FILE", "").strip() and not auth_pass:
+            return JSONResponse({"detail": "Mật khẩu máy chủ chưa được cấu hình hợp lệ."}, status_code=503)
         supplied = request.headers.get("Authorization", "")
-        if token and not hmac.compare_digest(supplied.encode(), f"Bearer {token}".encode()):
-            return JSONResponse({"detail": "Cần mã truy cập ứng dụng hợp lệ."}, status_code=401)
+        if auth_pass:
+            expected = f"Basic {base64.b64encode(f'{auth_user}:{auth_pass}'.encode()).decode()}"
+            if not hmac.compare_digest(supplied.encode(), expected.encode()):
+                return JSONResponse({"detail": "Tài khoản hoặc mật khẩu không đúng."}, status_code=401)
     if request.headers.get("content-type", "").startswith("application/json"):
         body = bytearray()
         async for chunk in request.stream():
@@ -103,11 +108,11 @@ def root():
 def health():
     renderer = render_status()
     storage_ready = store.check_ready()
-    token = env_or_file("INFRARENDER_ACCESS_TOKEN")
-    token_file = bool(os.getenv("INFRARENDER_ACCESS_TOKEN_FILE", "").strip())
-    ready = storage_ready and (not token_file or bool(token))
+    auth_pass = env_or_file("INFRARENDER_AUTH_PASS")
+    auth_file = bool(os.getenv("INFRARENDER_AUTH_PASS_FILE", "").strip())
+    ready = storage_ready and (not auth_file or bool(auth_pass))
     body = {"status": "ok" if ready else "unavailable", "service": "InfraRender AI Backend", "version": VERSION,
-            "authentication_required": bool(token) or token_file,
+            "authentication_required": bool(auth_pass) or auth_file,
             "storage": {"ready": storage_ready},
             "capabilities": {"upload": ready, "prompt_generation": ready, "projects": ready,
                              "image_generation": ready and renderer.get("state") == "rendered"}, "renderer": renderer}

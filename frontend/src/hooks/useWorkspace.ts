@@ -5,6 +5,7 @@ import { apiRequest, uploadImage, requestRender, type PromptMode, type PromptRes
 import { DEFAULT_SETTINGS, toPromptRequest, type RenderSettings } from "@/lib/render-settings";
 import { downloadPrompt, promptSignature, type PromptVersion, type RenderVersion, type StoredSource } from "@/lib/workspace";
 import { emptyWorkspace, restoreRender, type WorkspaceState } from "@/lib/workspace-state";
+import { exportProjectZip, type ExportProgress } from "@/lib/export-project";
 import { useProjectPersistence } from "./useProjectPersistence";
 
 export function useWorkspace() {
@@ -15,6 +16,8 @@ export function useWorkspace() {
   const [isGenerating,setGenerating]=useState(false);
   const [isRendering,setRendering]=useState(false);
   const [isDownloading,setDownloading]=useState(false);
+  const [isExporting,setExporting]=useState(false);
+  const [exportProgress,setExportProgress]=useState<ExportProgress|null>(null);
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
   const uploadRef=useRef<AbortController|null>(null), generationRef=useRef<AbortController|null>(null);
@@ -131,7 +134,20 @@ export function useWorkspace() {
     if(isGenerating || isRendering || isUploading)return;
     if(await persistence.newProject()){clearPreview();setProjectRevision(v=>v+1);setError("");setNotice("Dự án trước đã được giữ trong danh sách.");}
   }
-  return {...data,...persistence,source,renderedImage,projectRevision,isUploading,isGenerating,isRendering,isDownloading,error,notice,
+  async function exportProject(snapshot: WorkspaceState = data) {
+    if(isExporting)return;
+    if(!snapshot.source && snapshot.renderVersions.length===0 && !snapshot.prompt.trim()){
+      setError("Dự án chưa có dữ liệu để xuất.");return;
+    }
+    setExporting(true);setExportProgress(null);setError("");setNotice("");
+    try {
+      await exportProjectZip(snapshot,{onProgress:setExportProgress});
+      setNotice(`Đã xuất dự án "${snapshot.projectName}" thành công.`);
+    } catch(err){
+      setError(err instanceof Error?err.message:"Không thể xuất dự án.");
+    } finally {setExporting(false);}
+  }
+  return {...data,...persistence,source,renderedImage,projectRevision,isUploading,isGenerating,isRendering,isDownloading,isExporting,exportProgress,error,notice,
     isStale:Boolean(data.prompt && data.generatedFrom && data.generatedFrom!==currentSignature),
     setProjectName:(projectName:string)=>patch({projectName}),
     setSettings:(settings:RenderSettings)=>patch({settings}),
@@ -149,5 +165,6 @@ export function useWorkspace() {
     saveVersion:()=>{if(!data.prompt.trim())return;if(data.versions.length>=200){setError("Lịch sử đã đủ 200 prompt.");return;}const version=makeVersion(data.prompt,data.generatedFrom||currentSignature);setData(current=>({...current,versions:[version,...current.versions],activeVersion:version.id}));},
     toggleFavorite:(id:string)=>setData(current=>({...current,versions:current.versions.map(v=>v.id===id?{...v,favorite:!v.favorite}:v)})),
     exportPrompt:()=>downloadPrompt(data.projectName,data.prompt,data.negativePrompt),
+    exportProject:()=>exportProject(data),
   };
 }

@@ -276,7 +276,8 @@ Frontend owns:
 - UI rendering
 - image selection and browser preview
 - render setting controls
-- workspace state
+- workspace state (including persistence via `useProjectPersistence` & SQLite backend)
+- **Project Export (ZIP):** fetching assets (reference & renders) from backend URLs and packaging them entirely in the browser (via `jszip`) with JSON metadata.
 - prompt preview/editing UX
 - API request construction
 - loading/progress/error presentation

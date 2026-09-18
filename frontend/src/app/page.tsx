@@ -8,9 +8,37 @@ import OutputHistory from "@/components/output/OutputHistory";
 import RenderResult from "@/components/output/RenderResult";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import ProjectBar from "@/components/workspace/ProjectBar";
+import LoginScreen from "@/components/layout/LoginScreen";
+import { useEffect, useState } from "react";
+import { apiRequest, getAccessToken } from "@/lib/api";
 
 export default function Home() {
   const workspace = useWorkspace();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    // Check initial auth status
+    async function check() {
+      if (!getAccessToken()) {
+        setIsCheckingAuth(false);
+        return;
+      }
+      try {
+        await apiRequest("/api/health");
+        setIsAuthenticated(true);
+      } catch {
+        setIsAuthenticated(false);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    }
+    void check();
+  }, []);
+
+  if (!isAuthenticated) {
+    return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} isChecking={isCheckingAuth} />;
+  }
 
   return (
     <div className="app">

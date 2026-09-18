@@ -13,6 +13,8 @@ services:
       # -- Storage: all persistent data (SQLite + uploads + outputs) under one volume --
       INFRARENDER_DATA_DIR: /data
       # -- Security & routing --
+      INFRARENDER_AUTH_USER: admin
+      INFRARENDER_AUTH_PASS_FILE: /run/secrets/infrarender_auth_pass
       INFRARENDER_CORS_ORIGINS: https://${INFRARENDER_DOMAIN}
       INFRARENDER_PUBLIC_BASE_URL: ""
     expose:
@@ -22,6 +24,7 @@ services:
       - infrarender_data:/data
     secrets:
       - openai_api_key
+      - infrarender_auth_pass
     restart: unless-stopped
     init: true
     security_opt:
@@ -138,6 +141,8 @@ services:
 secrets:
   openai_api_key:
     file: ./secrets/openai_api_key.txt
+  infrarender_auth_pass:
+    file: ./secrets/infrarender_auth_pass.txt
 
 volumes:
   # Single volume holds: projects.sqlite3 + uploads/ + outputs/

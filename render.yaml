@@ -1,4 +1,4 @@
-services:
+﻿services:
   - type: web
     name: infrarender-backend
     env: docker
@@ -17,11 +17,17 @@ services:
       - key: INFRARENDER_DATA_DIR
         value: /data  # Persistent disk mount path. Activate 'disk' block below when upgrading.
 
+      - key: INFRARENDER_AUTH_USER
+        value: "admin"
+
+      - key: INFRARENDER_AUTH_PASS
+        sync: false
+
       - key: INFRARENDER_CORS_ORIGINS
         value: https://hieudang99dd.github.io
 
       - key: OPENAI_API_KEY
-        sync: false  # Enter manually in the Render dashboard — never commit a real key.
+        sync: false  # Enter manually in the Render dashboard â€” never commit a real key.
 
       - key: INFRARENDER_ACCESS_TOKEN
         sync: false  # Enter manually in the Render dashboard (min 32 characters).

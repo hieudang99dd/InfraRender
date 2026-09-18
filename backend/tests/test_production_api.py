@@ -13,7 +13,7 @@ from services.project_store import ProjectStore
 
 class ProductionApiTests(unittest.TestCase):
     def setUp(self):
-        self.env = patch.dict(os.environ, {"OPENAI_API_KEY": "", "INFRARENDER_ACCESS_TOKEN": ""})
+        self.env = patch.dict(os.environ, {"OPENAI_API_KEY": "", "INFRARENDER_AUTH_PASS": ""})
         self.env.start()
         self.addCleanup(self.env.stop)
         self.client = TestClient(main.app)
@@ -39,10 +39,12 @@ class ProductionApiTests(unittest.TestCase):
             self.assertEqual(response.status_code, 422)
 
     def test_configured_team_token_protects_api_but_health_is_public(self):
-        with patch.dict(os.environ, {"INFRARENDER_ACCESS_TOKEN": "test-access-token"}):
+        with patch.dict(os.environ, {"INFRARENDER_AUTH_PASS": "test-access-token"}):
+            import base64
+            auth = "Basic " + base64.b64encode(b"admin:test-access-token").decode()
             self.assertEqual(self.client.get("/api/health").status_code, 200)
             self.assertEqual(self.client.post("/api/generate-prompt", json={}).status_code, 401)
-            self.assertEqual(self.client.post("/api/generate-prompt", json={}, headers={"Authorization": "Bearer test-access-token"}).status_code, 200)
+            self.assertEqual(self.client.post("/api/generate-prompt", json={}, headers={"Authorization": auth}).status_code, 200)
 
     def test_health_does_not_equate_configuration_to_render_success(self):
         with patch.object(main, "render_status", return_value={"configured": True, "state": "unverified", "provider": "OpenAI", "message": "Unverified"}):
@@ -60,7 +62,7 @@ class ProjectApiTests(unittest.TestCase):
         self.outputs.mkdir()
         self.store = ProjectStore(self.directory / "projects.sqlite3", self.uploads, self.outputs)
         for context in [
-            patch.dict(os.environ, {"INFRARENDER_ACCESS_TOKEN": "", "INFRARENDER_ENV": "development"}),
+            patch.dict(os.environ, {"INFRARENDER_AUTH_PASS": "", "INFRARENDER_ENV": "development"}),
             patch.object(main, "store", self.store),
             patch.object(main, "UPLOAD_DIR", self.uploads),
             patch.object(main, "OUTPUT_DIR", self.outputs),
@@ -78,15 +80,15 @@ class ProjectApiTests(unittest.TestCase):
         self.assertEqual(upload.status_code, 200, upload.text)
         uploaded = upload.json()
         snapshot = {
-            "schemaVersion": 1, "projectName": "Cầu thành phố", "promptMode": "vision",
+            "schemaVersion": 1, "projectName": "Cáº§u thÃ nh phá»‘", "promptMode": "vision",
             "source": {"saved_name": uploaded["saved_name"], "url": uploaded["url"],
-                       "name": "cau.png", "size": "0.01 MB", "resolution": "8 × 6"},
-            "prompt": "Giữ nguyên hình học cầu", "notes": "Buổi chiều",
+                       "name": "cau.png", "size": "0.01 MB", "resolution": "8 Ã— 6"},
+            "prompt": "Giá»¯ nguyÃªn hÃ¬nh há»c cáº§u", "notes": "Buá»•i chiá»u",
             "settings": {"quality": "4K", "aspectRatio": "16:9"},
-            "promptAnalysis": ["Một tuyến đường qua cầu"], "promptModel": "test-vision",
+            "promptAnalysis": ["Má»™t tuyáº¿n Ä‘Æ°á»ng qua cáº§u"], "promptModel": "test-vision",
             "versions": [], "renderVersions": [], "activeRenderId": None,
         }
-        created = self.client.post("/api/projects", json={"name": "Cầu thành phố", "workspace": snapshot})
+        created = self.client.post("/api/projects", json={"name": "Cáº§u thÃ nh phá»‘", "workspace": snapshot})
         self.assertEqual(created.status_code, 201, created.text)
         project = created.json()
         url = f"/api/projects/{project['id']}"
@@ -96,18 +98,18 @@ class ProjectApiTests(unittest.TestCase):
 
         media_url = f"/api/files/uploads/{uploaded['saved_name']}"
         self.assertEqual(self.client.delete(media_url).status_code, 409)
-        update = {"name": "Cầu mới", "workspace": {**snapshot, "notes": "Buổi sáng"}, "revision": 1}
+        update = {"name": "Cáº§u má»›i", "workspace": {**snapshot, "notes": "Buá»•i sÃ¡ng"}, "revision": 1}
         saved = self.client.put(url, json=update)
         self.assertEqual(saved.status_code, 200, saved.text)
         self.assertEqual(saved.json()["revision"], 2)
         self.assertEqual(self.client.put(url, json=update).status_code, 409)
-        self.assertEqual(self.client.get(url).json()["workspace"]["notes"], "Buổi sáng")
+        self.assertEqual(self.client.get(url).json()["workspace"]["notes"], "Buá»•i sÃ¡ng")
         self.assertEqual(self.client.delete(url).status_code, 200)
         self.assertEqual(self.client.get(url).status_code, 404)
         self.assertFalse((self.uploads / uploaded["saved_name"]).exists())
 
     def test_project_update_requires_revision_and_rejects_invalid_workspace(self):
-        project = self.client.post("/api/projects", json={"name": "Cầu", "workspace": {}}).json()
+        project = self.client.post("/api/projects", json={"name": "Cáº§u", "workspace": {}}).json()
         url = f"/api/projects/{project['id']}"
         self.assertEqual(self.client.put(url, json={"name": "New", "workspace": {}}).status_code, 422)
         invalid = self.client.put(url, json={"name": "New", "workspace": {"unknown": True}, "revision": 1})
@@ -136,16 +138,18 @@ class ProjectApiTests(unittest.TestCase):
         self.assertEqual(self.client.get("/api/storage").json()["total_bytes"], 0)
 
     def test_team_token_blocks_project_and_file_mutations_without_credentials(self):
-        with patch.dict(os.environ, {"INFRARENDER_ACCESS_TOKEN": "team-access"}):
+        with patch.dict(os.environ, {"INFRARENDER_AUTH_PASS": "team-access"}):
+            import base64
+            auth = "Basic " + base64.b64encode(b"admin:team-access").decode()
             for method, url, data in [
                 ("get", "/api/projects", None),
-                ("post", "/api/projects", {"name": "Cầu", "workspace": {}}),
+                ("post", "/api/projects", {"name": "Cáº§u", "workspace": {}}),
                 ("post", "/api/storage/cleanup", {"dry_run": False}),
                 ("delete", "/api/files/uploads/not-an-image.png", None),
             ]:
                 response = self.client.request(method, url, json=data)
                 self.assertEqual(response.status_code, 401)
-            allowed = self.client.get("/api/projects", headers={"Authorization": "Bearer team-access"})
+            allowed = self.client.get("/api/projects", headers={"Authorization": auth})
             self.assertEqual(allowed.status_code, 200)
 
     def test_cors_preflight_supports_authenticated_project_updates(self):
@@ -170,14 +174,14 @@ class ProjectApiTests(unittest.TestCase):
             ("x" * 32, "https://infra.example.test", ["*"]),
         ]:
             with self.subTest(public_url=public_url, origins=origins), \
-                 patch.dict(os.environ, {"INFRARENDER_ENV": "production", "INFRARENDER_ACCESS_TOKEN": token}), \
+                 patch.dict(os.environ, {"INFRARENDER_ENV": "production", "INFRARENDER_AUTH_PASS": token}), \
                  patch.object(main, "PUBLIC_BASE_URL", public_url), patch.object(main, "CORS_ORIGINS", origins):
                 with self.assertRaises(RuntimeError):
                     with TestClient(main.app):
                         pass
 
     def test_production_lifespan_accepts_explicit_secure_configuration(self):
-        with patch.dict(os.environ, {"INFRARENDER_ENV": "production", "INFRARENDER_ACCESS_TOKEN": "x" * 32}), \
+        with patch.dict(os.environ, {"INFRARENDER_ENV": "production", "INFRARENDER_AUTH_PASS": "x" * 32}), \
              patch.object(main, "PUBLIC_BASE_URL", "https://infra.example.test"), \
              patch.object(main, "CORS_ORIGINS", ["https://ui.example.test"]), \
              patch.object(main.store, "check_ready", return_value=True):
