@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup InfraRender Docker volumes
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/infrarender
+EnvironmentFile=-/opt/infrarender/.env
+ExecStart=/usr/bin/bash /opt/infrarender/ops/backup.sh /var/backups/infrarender
