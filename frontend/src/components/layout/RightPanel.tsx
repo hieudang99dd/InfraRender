@@ -40,7 +40,6 @@ import styles from "./RightPanel.module.css";
 type RightPanelProps = {
   settings: RenderSettings;
   onChange: (settings: RenderSettings) => void;
-  onGenerate: () => void;
   isGenerating: boolean;
   isRendering: boolean;
   canGenerate: boolean;
@@ -162,7 +161,6 @@ function PreservationChoice({
 export default function RightPanel({
   settings,
   onChange,
-  onGenerate,
   isGenerating,
   isRendering,
   canGenerate,
