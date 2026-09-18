@@ -2,6 +2,7 @@
 
 import logging
 import os
+import time
 from pathlib import Path
 from uuid import uuid4
 
@@ -49,6 +50,29 @@ app.add_middleware(
 )
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 app.mount("/outputs", StaticFiles(directory=OUTPUT_DIR), name="outputs")
+
+
+@app.middleware("http")
+async def request_logging(request: Request, call_next):
+    """Log request metadata only; never log request bodies, prompts or credentials."""
+    request_id = request.headers.get("x-request-id") or uuid4().hex
+    started = time.perf_counter()
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        response.headers["X-Request-ID"] = request_id
+        return response
+    finally:
+        if request.url.path != "/api/health":
+            logger.info(
+                "request method=%s path=%s status=%s duration_ms=%.1f request_id=%s",
+                request.method,
+                request.url.path,
+                status_code,
+                (time.perf_counter() - started) * 1000,
+                request_id,
+            )
 
 
 @app.get("/")
