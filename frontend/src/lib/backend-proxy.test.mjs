@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { backendBaseUrl, proxyBackend } from "./backend-proxy.ts";
+import { backendBaseUrl, proxyBackend, resetRateLimitsForTests } from "./backend-proxy.ts";
 
 function setup(context, url = "http://127.0.0.1:8000") {
   const previous = process.env.INFRARENDER_API_URL;
@@ -171,4 +171,60 @@ test("proxy preserves API validation errors and sanitizes non-JSON responses", a
   const bad = await proxyBackend(request(), ["upload-image"]);
   assert.equal(bad.status, 502);
   assert.doesNotMatch(await bad.text(), /credentials/);
+});
+
+
+test("proxy rate limits repeated render requests by client address", async (context) => {
+  setup(context);
+  resetRateLimitsForTests();
+  context.after(() => resetRateLimitsForTests());
+  const mock = context.mock.method(globalThis, "fetch", async () =>
+    Response.json({
+      status: "success",
+      url: "/outputs/result.png",
+      name: "result.png",
+      width: 1024,
+      height: 1024,
+      provider: "OpenAI Images",
+      model: "gpt-image-2",
+    }),
+  );
+
+  const body = JSON.stringify({
+    prompt: "Scene",
+    negative_prompt: "",
+    reference_image_name: "ref.png",
+    settings: {},
+    project_name: "Test",
+  });
+
+  for (let index = 0; index < 12; index += 1) {
+    const response = await proxyBackend(
+      new Request("https://studio.example/api/render-image", {
+        method: "POST",
+        body,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Forwarded-For": "203.0.113.10",
+        },
+      }),
+      ["render-image"],
+    );
+    assert.equal(response.status, 200);
+  }
+
+  const limited = await proxyBackend(
+    new Request("https://studio.example/api/render-image", {
+      method: "POST",
+      body,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Forwarded-For": "203.0.113.10",
+      },
+    }),
+    ["render-image"],
+  );
+  assert.equal(limited.status, 429);
+  assert.ok(Number(limited.headers.get("retry-after")) > 0);
+  assert.equal(mock.mock.callCount(), 12);
 });
