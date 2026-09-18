@@ -54,6 +54,10 @@ jobs:
       - name: Validate Compose
         run: |
           docker compose -f compose.yaml -f compose.local.yaml config
+          mkdir -p secrets
+          printf '%s' 'ci-placeholder-key' > secrets/openai_api_key.txt
+          INFRARENDER_DOMAIN=render.example.com docker compose -f compose.yaml -f compose.production.yaml config
+          INFRARENDER_DOMAIN=render.example.com docker compose -f compose.deploy.yaml config
       - name: Build Docker images
         run: |
           docker compose -f compose.yaml -f compose.local.yaml build
