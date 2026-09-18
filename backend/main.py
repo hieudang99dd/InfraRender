@@ -173,9 +173,9 @@ async def create_render(
             
         content = await run_in_threadpool(image_path.read_bytes)
         
-        # We don't have the original filename or content type here, but validate_image will infer it
+        # The saved extension is authoritative here; let validate_image detect the MIME type.
         metadata = await run_in_threadpool(
-            validate_image, content, data.reference_image_name, "image/jpeg"
+            validate_image, content, data.reference_image_name, None
         )
         result, result_metadata = await render_image(content, metadata, data.prompt, data.negative_prompt)
         name = f"{uuid4().hex}.png"
