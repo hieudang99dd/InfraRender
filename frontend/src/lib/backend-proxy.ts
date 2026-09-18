@@ -49,6 +49,21 @@ export function resetRateLimitsForTests() {
   rateBuckets.clear();
 }
 
+function hasTrustedOrigin(request: Request) {
+  if (request.method === "GET" || request.method === "HEAD") return true;
+
+  if (request.headers.get("sec-fetch-site") === "cross-site") return false;
+
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+
+  try {
+    return new URL(origin).origin === new URL(request.url).origin;
+  } catch {
+    return false;
+  }
+}
+
 // Server-side only: imported by the API route, never by browser components.
 const MAX_UPLOAD_REQUEST_BYTES = 21 * 1024 * 1024;
 const MAX_JSON_REQUEST_BYTES = 512 * 1024;
@@ -144,6 +159,8 @@ export async function proxyBackend(request: Request, segments: string[]): Promis
   if (!method) return failure("Không tìm thấy chức năng này.", 404, requestId);
   if (request.method !== method)
     return failure("Phương thức không được hỗ trợ.", 405, requestId);
+  if (!hasTrustedOrigin(request))
+    return failure("Nguồn yêu cầu không được phép.", 403, requestId);
 
   const limited = checkRateLimit(request, path);
   if (limited) {
