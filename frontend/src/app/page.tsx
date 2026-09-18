@@ -62,7 +62,6 @@ export default function Home() {
                 key={workspace.projectRevision}
                 settings={workspace.settings}
                 onChange={workspace.setSettings}
-                onGenerate={workspace.generatePrompt}
                 isGenerating={workspace.isGenerating}
                 isRendering={workspace.isRendering}
                 canGenerate={Boolean(workspace.source)}
