@@ -228,3 +228,25 @@ test("proxy rate limits repeated render requests by client address", async (cont
   assert.ok(Number(limited.headers.get("retry-after")) > 0);
   assert.equal(mock.mock.callCount(), 12);
 });
+
+
+test("proxy rejects cross-origin state-changing requests before contacting backend", async (context) => {
+  setup(context);
+  const mock = context.mock.method(globalThis, "fetch", () => {
+    throw new Error("must not contact backend");
+  });
+  const response = await proxyBackend(
+    new Request("https://studio.example/api/generate-prompt", {
+      method: "POST",
+      body: JSON.stringify({ weather: "sunny weather" }),
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "https://attacker.example",
+        "Sec-Fetch-Site": "cross-site",
+      },
+    }),
+    ["generate-prompt"],
+  );
+  assert.equal(response.status, 403);
+  assert.equal(mock.mock.callCount(), 0);
+});
