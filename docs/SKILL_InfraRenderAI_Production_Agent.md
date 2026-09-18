@@ -540,30 +540,48 @@ InfraRenderAI production được coi là đạt khi:
 
 ## 21. Trạng thái hiện tại
 
-Tại thời điểm tài liệu này được đưa vào repo, project đã đạt:
+Trạng thái repository hiện tại:
 
 - frontend application: done;
 - backend core: done;
 - typecheck/lint/tests/build: done;
 - Docker frontend/backend: done;
 - Docker Compose local: done;
-- Docker production config: done;
-- persistent volumes: done;
+- Docker production/deploy config: done;
+- persistent volumes với tên ổn định: done;
 - Docker secret support: done;
-- Caddy config: done;
+- Caddy config + request limits + security headers: done;
+- API proxy rate limiting: done;
+- request tracing an toàn: done;
+- Docker log rotation/resource/PID hardening: done;
+- upload/output retention worker: done;
+- backup + checksum + restore scripts: done;
+- scheduled backup systemd units: done;
+- health/disk monitoring systemd units: done;
+- deploy health verification: done;
+- rollback bằng immutable image tag: done;
+- dependency pinning/update policy: done;
+- Trivy security CI gate: done;
+- Docker SBOM/provenance: done;
 - Docker integration CI: done;
-- GHCR publish: done.
+- GHCR publish: done;
+- guarded GitHub production deploy workflow: done.
 
-Chưa hoàn tất ngoài hạ tầng thực tế:
+Các mục còn lại phụ thuộc hạ tầng bên ngoài repository:
 
-- VPS production;
+- VPS production thật;
+- firewall VPS;
 - DNS/domain thật;
-- HTTPS certificate thật;
-- production render smoke test;
-- automated backup;
-- monitoring;
-- rate limiting;
-- long-term storage policy.
+- HTTPS certificate được cấp trên domain thật;
+- production secrets/SSH credentials;
+- cài và bật systemd backup/monitor timers trên VPS;
+- off-server backup hoặc VPS snapshot;
+- kênh cảnh báo monitoring;
+- production render smoke test bằng tài khoản OpenAI thật;
+- kiểm thử restore/rollback thực tế trên VPS.
+
+Các hạng mục scale-up như PostgreSQL, authentication, object storage, Redis,
+billing và Kubernetes không phải blocker của production v1.
 
 ---
 
