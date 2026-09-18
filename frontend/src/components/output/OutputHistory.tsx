@@ -44,7 +44,7 @@ export default function OutputHistory({
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (err) {}
+    } catch {}
   }
 
   return (
