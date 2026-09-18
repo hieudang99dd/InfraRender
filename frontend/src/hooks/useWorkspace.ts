@@ -43,7 +43,7 @@ export function useWorkspace() {
         if (data.versions) setVersions(data.versions);
         if (data.renderVersions) setRenderVersions(data.renderVersions);
       }
-    } catch (e) {}
+    } catch {}
     setIsLoaded(true);
   }, []);
 
@@ -185,6 +185,10 @@ export function useWorkspace() {
         setSourceImageName(reference_image_name);
       }
       
+      if (!reference_image_name) {
+        throw new Error("Chưa có ảnh tham chiếu trên máy chủ. Vui lòng chọn lại ảnh.");
+      }
+
       const renderRequest = {
         prompt,
         negative_prompt: negativePrompt,
@@ -309,6 +313,8 @@ export function useWorkspace() {
       name: version.name,
       width: version.width,
       height: version.height,
+      provider: version.provider,
+      model: version.model,
     });
     setError("");
     setNotice("Đã khôi phục thông số và ảnh từ phối cảnh đã dựng.");
@@ -352,6 +358,7 @@ export function useWorkspace() {
     setNotes("");
     setNegativePrompt("");
     setVersions([]);
+    setRenderVersions([]);
   }
 
   return {
