@@ -19,6 +19,20 @@ services:
     secrets:
       - openai_api_key
     restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    mem_limit: ${BACKEND_MEMORY_LIMIT:-1g}
+    cpus: ${BACKEND_CPU_LIMIT:-1.5}
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test:
         - CMD
@@ -40,6 +54,20 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    mem_limit: ${FRONTEND_MEMORY_LIMIT:-512m}
+    cpus: ${FRONTEND_CPU_LIMIT:-1.0}
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test:
         - CMD
@@ -51,8 +79,34 @@ services:
       retries: 3
       start_period: 15s
 
+  maintenance:
+    image: ghcr.io/${GHCR_OWNER:-hieudang99dd}/infrarender-backend:${INFRARENDER_IMAGE_TAG:-latest}
+    environment:
+      INFRARENDER_UPLOAD_RETENTION_HOURS: ${INFRARENDER_UPLOAD_RETENTION_HOURS:-168}
+      INFRARENDER_OUTPUT_RETENTION_HOURS: ${INFRARENDER_OUTPUT_RETENTION_HOURS:-720}
+      INFRARENDER_CLEANUP_INTERVAL_SECONDS: ${INFRARENDER_CLEANUP_INTERVAL_SECONDS:-21600}
+      INFRARENDER_LOG_LEVEL: ${INFRARENDER_LOG_LEVEL:-INFO}
+    volumes:
+      - infrarender_uploads:/app/uploads
+      - infrarender_outputs:/app/outputs
+    command: ["python", "-m", "services.cleanup_storage", "--loop"]
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 64
+    mem_limit: ${MAINTENANCE_MEMORY_LIMIT:-256m}
+    cpus: ${MAINTENANCE_CPU_LIMIT:-0.25}
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2.11.4-alpine
     environment:
       INFRARENDER_DOMAIN: ${INFRARENDER_DOMAIN:?Set INFRARENDER_DOMAIN in the server .env file}
     ports:
@@ -67,6 +121,14 @@ services:
       frontend:
         condition: service_healthy
     restart: unless-stopped
+    pids_limit: 128
+    mem_limit: ${CADDY_MEMORY_LIMIT:-256m}
+    cpus: ${CADDY_CPU_LIMIT:-0.50}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 secrets:
   openai_api_key:
@@ -74,6 +136,10 @@ secrets:
 
 volumes:
   infrarender_uploads:
+    name: infrarender_uploads
   infrarender_outputs:
+    name: infrarender_outputs
   caddy_data:
+    name: infrarender_caddy_data
   caddy_config:
+    name: infrarender_caddy_config
