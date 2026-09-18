@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { ArrowUpRight, FileText, History, Star, Trash2, Image as ImageIcon, Download } from "lucide-react";
 import type { PromptVersion, RenderVersion } from "@/lib/workspace";
-import Image from "next/image";
 
 type OutputHistoryProps = {
   versions: PromptVersion[];
