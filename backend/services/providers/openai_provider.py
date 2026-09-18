@@ -195,7 +195,7 @@ class OpenAIImageProvider(ImageProvider):
                         "POST", f"{config.base_url}/images/edits",
                         headers={"Authorization": f"Bearer {config.api_key}"},
                         data={"model": config.model, "prompt": combined_prompt, "n": "1", "output_format": "png"},
-                        files={"image[]": (f"reference{metadata.extension}", image_content, metadata.content_type)},
+                        files={"image": (f"reference{metadata.extension}", image_content, metadata.content_type)},
                     ) as response:
                         if not response.is_success:
                             self._record_status(config, *_provider_connection_issue(response.status_code))
