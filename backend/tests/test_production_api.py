@@ -41,7 +41,7 @@ class ProductionApiTests(unittest.TestCase):
     def test_configured_team_token_protects_api_but_health_is_public(self):
         with patch.dict(os.environ, {"INFRARENDER_AUTH_PASS": "test-access-token"}):
             import base64
-            auth = "Basic " + base64.b64encode(b"admin:test-access-token").decode()
+            auth = "Basic " + base64.b64encode(b"hieu.dv:test-access-token").decode()
             self.assertEqual(self.client.get("/api/health").status_code, 200)
             self.assertEqual(self.client.post("/api/generate-prompt", json={}).status_code, 401)
             self.assertEqual(self.client.post("/api/generate-prompt", json={}, headers={"Authorization": auth}).status_code, 200)
@@ -140,7 +140,7 @@ class ProjectApiTests(unittest.TestCase):
     def test_team_token_blocks_project_and_file_mutations_without_credentials(self):
         with patch.dict(os.environ, {"INFRARENDER_AUTH_PASS": "team-access"}):
             import base64
-            auth = "Basic " + base64.b64encode(b"admin:team-access").decode()
+            auth = "Basic " + base64.b64encode(b"hieu.dv:team-access").decode()
             for method, url, data in [
                 ("get", "/api/projects", None),
                 ("post", "/api/projects", {"name": "Cáº§u", "workspace": {}}),

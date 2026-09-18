@@ -27,8 +27,8 @@ class AuditRegressionTests(unittest.TestCase):
         self.store.initialize()
         env = patch.dict(os.environ, {
             "INFRARENDER_ENV": "development", "INFRARENDER_DATA_DIR": str(self.root),
-            "INFRARENDER_RETENTION_DAYS": "30", "INFRARENDER_ACCESS_TOKEN": "",
-            "INFRARENDER_ACCESS_TOKEN_FILE": "", "OPENAI_API_KEY": "",
+            "INFRARENDER_RETENTION_DAYS": "30", "INFRARENDER_AUTH_PASS": "",
+            "INFRARENDER_AUTH_PASS_FILE": "", "OPENAI_API_KEY": "",
             "OPENAI_API_KEY_FILE": "", "OPENAI_IMAGE_MODEL": "gpt-image-2",
             "OPENAI_PROMPT_MODEL": "gpt-4o-mini", "OPENAI_BASE_URL": "https://api.openai.com/v1",
         })
@@ -56,14 +56,16 @@ class AuditRegressionTests(unittest.TestCase):
         secret = self.root / "access-token"
         token = "test-mounted-application-token-123456789"
         secret.write_text(token + "\n", encoding="utf-8")
-        with patch.dict(os.environ, {"INFRARENDER_ACCESS_TOKEN_FILE": str(secret)}):
+        with patch.dict(os.environ, {"INFRARENDER_AUTH_PASS_FILE": str(secret)}):
+            import base64
+            auth = "Basic " + base64.b64encode(f"hieu.dv:{token}".encode()).decode()
             self.assertTrue(self.client.get("/api/health").json()["authentication_required"])
             self.assertEqual(self.client.get("/api/projects").status_code, 401)
-            response = self.client.get("/api/projects", headers={"Authorization": f"Bearer {token}"})
+            response = self.client.get("/api/projects", headers={"Authorization": auth})
             self.assertEqual(response.status_code, 200)
 
     def test_unreadable_configured_token_file_never_opens_project_access(self):
-        with patch.dict(os.environ, {"INFRARENDER_ACCESS_TOKEN_FILE": str(self.root / "missing")}):
+        with patch.dict(os.environ, {"INFRARENDER_AUTH_PASS_FILE": str(self.root / "missing")}):
             response = self.client.get("/api/projects")
             self.assertEqual(response.status_code, 503)
             self.assertNotIn(str(self.root), response.text)
