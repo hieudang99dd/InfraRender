@@ -6,7 +6,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -44,7 +44,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type"],
 )
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
@@ -159,10 +159,7 @@ async def create_render(
     data: RenderRequest,
 ) -> RenderResponse:
     """Render the actual source image using the standardized RenderRequest contract."""
-    from services.image_upload import validate_image
-    
-    try:
-        render_prompt(data.prompt, data.negative_prompt)
+    render_prompt(data.prompt, data.negative_prompt)
         status = render_status()
         if not status["configured"]:
             raise HTTPException(503, status["message"])
@@ -195,12 +192,13 @@ async def create_render(
             else str(request.url_for("outputs", path=name))
         )
         return RenderResponse(
-            url=url, name=name, width=result_metadata.width, height=result_metadata.height,
-            provider=result_metadata.provider if hasattr(result_metadata, "provider") else "OpenAI",
-            model=result_metadata.model if hasattr(result_metadata, "model") else "gpt-image-2",
+            url=url,
+            name=name,
+            width=result_metadata.width,
+            height=result_metadata.height,
+            provider=result_metadata.provider,
+            model=result_metadata.model,
         )
-    finally:
-        pass
 
 @app.delete("/api/files/{directory}/{filename}")
 async def delete_file(directory: str, filename: str) -> dict:
