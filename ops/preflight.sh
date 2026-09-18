@@ -51,66 +51,13 @@ if ! [[ "${INFRARENDER_DOMAIN}" =~ ^[A-Za-z0-9.-]+$ ]] || [[ "${INFRARENDER_DOMA
   exit 2
 fi
 
-case "${INFRARENDER_BASIC_AUTH_HASH}" in
-  '$2a
-  *)
-    echo "ERROR: INFRARENDER_BASIC_AUTH_HASH must be a Caddy-compatible bcrypt hash." >&2
-    exit 2
-    ;;
-esac
-
-if [ "$(stat -c '%a' secrets/openai_api_key.txt 2>/dev/null || true)" != "600" ]; then
-  echo "WARNING: secrets/openai_api_key.txt should have mode 600." >&2
+if ! [[ "${INFRARENDER_BASIC_AUTH_HASH}" =~ ^\$2[aby]\$ ]]; then
+  echo "ERROR: INFRARENDER_BASIC_AUTH_HASH must be a Caddy-compatible bcrypt hash." >&2
+  exit 2
 fi
 
-INFRARENDER_DOMAIN="${INFRARENDER_DOMAIN}" \
-INFRARENDER_BASIC_AUTH_USER="${INFRARENDER_BASIC_AUTH_USER}" \
-INFRARENDER_BASIC_AUTH_HASH="${INFRARENDER_BASIC_AUTH_HASH}" \
-docker compose -f compose.deploy.yaml config >/dev/null
-
-echo "Production preflight passed."
-*|'$2b
-  *)
-    echo "ERROR: INFRARENDER_BASIC_AUTH_HASH must be a Caddy-compatible bcrypt hash." >&2
-    exit 2
-    ;;
-esac
-
-if [ "$(stat -c '%a' secrets/openai_api_key.txt 2>/dev/null || true)" != "600" ]; then
-  echo "WARNING: secrets/openai_api_key.txt should have mode 600." >&2
-fi
-
-INFRARENDER_DOMAIN="${INFRARENDER_DOMAIN}" \
-INFRARENDER_BASIC_AUTH_USER="${INFRARENDER_BASIC_AUTH_USER}" \
-INFRARENDER_BASIC_AUTH_HASH="${INFRARENDER_BASIC_AUTH_HASH}" \
-docker compose -f compose.deploy.yaml config >/dev/null
-
-echo "Production preflight passed."
-*|'$2y
-  *)
-    echo "ERROR: INFRARENDER_BASIC_AUTH_HASH must be a Caddy-compatible bcrypt hash." >&2
-    exit 2
-    ;;
-esac
-
-if [ "$(stat -c '%a' secrets/openai_api_key.txt 2>/dev/null || true)" != "600" ]; then
-  echo "WARNING: secrets/openai_api_key.txt should have mode 600." >&2
-fi
-
-INFRARENDER_DOMAIN="${INFRARENDER_DOMAIN}" \
-INFRARENDER_BASIC_AUTH_USER="${INFRARENDER_BASIC_AUTH_USER}" \
-INFRARENDER_BASIC_AUTH_HASH="${INFRARENDER_BASIC_AUTH_HASH}" \
-docker compose -f compose.deploy.yaml config >/dev/null
-
-echo "Production preflight passed."
-*) ;;
-  *)
-    echo "ERROR: INFRARENDER_BASIC_AUTH_HASH must be a Caddy-compatible bcrypt hash." >&2
-    exit 2
-    ;;
-esac
-
-if [ "$(stat -c '%a' secrets/openai_api_key.txt 2>/dev/null || true)" != "600" ]; then
+secret_mode="$(stat -c '%a' secrets/openai_api_key.txt 2>/dev/null || true)"
+if [ "$secret_mode" != "600" ]; then
   echo "WARNING: secrets/openai_api_key.txt should have mode 600." >&2
 fi
 
