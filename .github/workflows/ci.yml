@@ -252,7 +252,22 @@ jobs:
           CONFIRM_RESTORE=yes INFRARENDER_DATA_VOLUME="$INFRARENDER_DATA_VOLUME" bash ops/restore.sh "$backup_dir"
           docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml up -d
 
-          curl --fail --silent --show-error http://127.0.0.1:8000/api/health | jq -e '.status == "ok" and .service == "InfraRender AI Backend"' >/dev/null
+          recovered=0
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:8000/api/health > /tmp/restored-health.json; then
+              if jq -e '.status == "ok" and .service == "InfraRender AI Backend"' /tmp/restored-health.json >/dev/null; then
+                recovered=1
+                break
+              fi
+            fi
+            sleep 2
+          done
+          if [ "$recovered" -ne 1 ]; then
+            echo "Backend did not recover after restore"
+            docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml ps
+            docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml logs --no-color backend frontend
+            exit 1
+          fi
           curl --fail --silent --show-error "http://127.0.0.1:8000/api/projects/$project_id" | jq -e --arg name "$project_name" '.name == $name' >/dev/null
           curl --fail --silent --show-error "http://127.0.0.1:8000/uploads/$name" -o /tmp/restored.png
           cmp -s /tmp/pixel.png /tmp/restored.png
