@@ -41,6 +41,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - run: npm run format:check
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
@@ -65,6 +66,8 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     needs: [security, frontend, backend]
+    env:
+      INFRARENDER_DATA_VOLUME: infrarender_ci_data
     steps:
       - uses: actions/checkout@v4
       - name: Show Docker versions
@@ -79,7 +82,9 @@ jobs:
           mkdir -p secrets
           printf '%s' 'ci-placeholder-key' > secrets/openai_api_key.txt
           printf '%s' 'ci-placeholder-pass-at-least-12-chars' > secrets/infrarender_auth_pass.txt
-          INFRARENDER_DOMAIN=render.example.com docker compose -f compose.deploy.yaml config
+          INFRARENDER_DOMAIN=render.example.com \
+          INFRARENDER_IMAGE_TAG=0123456789abcdef0123456789abcdef01234567 \
+          docker compose -f compose.deploy.yaml config
 
       - name: Validate Caddy configuration
         run: |
@@ -208,15 +213,7 @@ jobs:
           fi
 
           echo "Testing upload -> /uploads download round trip through Caddy..."
-          python3 - <<'PY'
-import base64
-# 1x1 PNG fixture; validated by the backend with Pillow.
-open("/tmp/pixel.png", "wb").write(
-    base64.b64decode(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-    )
-)
-PY
+          python3 -c 'import base64; open("/tmp/pixel.png", "wb").write(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="))'
           curl -k --fail --silent --show-error \
             -F "file=@/tmp/pixel.png;type=image/png" \
             https://localhost:8443/api/upload-image > /tmp/upload.json
@@ -231,6 +228,36 @@ PY
             exit 1
           fi
           echo "Self-host routing through Caddy: PASS"
+
+      - name: Smoke test disposable backup and restore
+        run: |
+          backup_root="$(mktemp -d)"
+          project_name="CI recovery project"
+          project_payload="$(jq -n --arg name "$project_name" --arg saved "$name" '{name: $name, workspace: {source: {saved_name: $saved}}}')"
+          project_id="$(curl -k --fail --silent --show-error -H 'Content-Type: application/json' -d "$project_payload" https://localhost:8443/api/projects | jq -r '.id')"
+          if [ -z "$project_id" ] || [ "$project_id" = "null" ]; then
+            echo "Project creation failed during recovery smoke"
+            exit 1
+          fi
+
+          INFRARENDER_DATA_VOLUME="$INFRARENDER_DATA_VOLUME" bash ops/backup.sh "$backup_root"
+          backup_dir="$(find "$backup_root" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+          test -n "$backup_dir"
+          test -f "$backup_dir/infrarender_data.tar.gz"
+          test -f "$backup_dir/SHA256SUMS"
+          test -f "$backup_dir/metadata.txt"
+
+          docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml down
+          docker volume rm "$INFRARENDER_DATA_VOLUME"
+          CONFIRM_RESTORE=yes INFRARENDER_DATA_VOLUME="$INFRARENDER_DATA_VOLUME" bash ops/restore.sh "$backup_dir"
+          docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml up -d
+
+          curl --fail --silent --show-error http://127.0.0.1:8000/api/health | jq -e '.status == "ok" and .service == "InfraRender AI Backend"' >/dev/null
+          curl --fail --silent --show-error "http://127.0.0.1:8000/api/projects/$project_id" | jq -e --arg name "$project_name" '.name == $name' >/dev/null
+          curl --fail --silent --show-error "http://127.0.0.1:8000/uploads/$name" -o /tmp/restored.png
+          cmp -s /tmp/pixel.png /tmp/restored.png
+          rm -rf "$backup_root"
+          echo "Disposable backup/restore smoke: PASS"
 
       - name: Show container status
         if: always()

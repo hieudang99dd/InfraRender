@@ -85,7 +85,7 @@ printf '%s' '<openai-key>' > secrets/openai_api_key.txt
 printf '%s' '<app-password-12+-chars>' > secrets/infrarender_auth_pass.txt
 chmod 600 secrets/*.txt
 bash ops/preflight.sh
-bash ops/deploy.sh <full-40-char-git-sha>   # hoặc default: latest
+bash ops/deploy.sh <full-40-char-git-sha>
 ```
 
 `ops/preflight.sh` kiểm tra `.env`, các secret file, Docker daemon, Compose, format

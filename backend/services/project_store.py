@@ -29,6 +29,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, Validation
 logger = logging.getLogger(__name__)
 MEDIA_NAME = re.compile(r"^[a-f0-9]{32}\.(?:png|jpg|jpeg|webp)$")
 MAX_WORKSPACE_BYTES = 4 * 1024 * 1024
+SCHEMA_VERSION = 1
 ShortText = Annotated[str, StringConstraints(strict=True, max_length=200)]
 
 
@@ -173,6 +174,10 @@ class ProjectStore:
             try:
                 connection.execute("PRAGMA journal_mode=WAL")
                 version = connection.execute("PRAGMA user_version").fetchone()[0]
+                if version > SCHEMA_VERSION:
+                    raise RuntimeError(
+                        f"Unsupported project database schema version: {version}"
+                    )
                 self._migrate(connection, version)
                 connection.commit()
                 self._initialized = True
@@ -200,7 +205,7 @@ class ProjectStore:
         # if current < 2:
         #     connection.execute("ALTER TABLE projects ADD COLUMN ...")
         #     current = 2
-        connection.execute(f"PRAGMA user_version = {int(current)}")
+        connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
     @contextmanager
     def _connection(self, write: bool = False):

@@ -59,6 +59,6 @@ restore_volume() {
   docker run --rm -v "$volume:/target" -v "$SOURCE:/backup:ro" alpine:3.22 sh -c "find /target -mindepth 1 -maxdepth 1 -exec rm -rf {} + && tar -xzf /backup/$archive -C /target"
 }
 
-restore_volume infrarender_data
+restore_volume "${INFRARENDER_DATA_VOLUME:-infrarender_data}"
 
 echo "Restore completed from: $SOURCE"

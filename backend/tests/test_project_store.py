@@ -57,6 +57,20 @@ class ProjectStoreTests(unittest.TestCase):
             version = connection.execute("PRAGMA user_version").fetchone()[0]
         self.assertEqual(version, 1)
 
+    def test_newer_schema_version_fails_closed(self):
+        self.store.initialize()
+        with closing(sqlite3.connect(self.db)) as connection:
+            connection.execute("PRAGMA user_version = 2")
+            connection.commit()
+
+        reopened = ProjectStore(self.db, self.uploads, self.outputs)
+        with self.assertRaises(RuntimeError):
+            reopened.initialize()
+
+        with closing(sqlite3.connect(self.db)) as connection:
+            version = connection.execute("PRAGMA user_version").fetchone()[0]
+        self.assertEqual(version, 2)
+
     def test_workspace_survives_new_store_instance_and_revision_increments(self):
         snapshot = {"prompt": "Phối cảnh cầu vượt", "settings": {"customKeywords": ["ban đêm"]}}
         project = self.store.create("Dự án cầu", snapshot)

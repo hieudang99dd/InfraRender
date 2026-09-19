@@ -9,7 +9,6 @@ import argparse
 import json
 import logging
 import os
-import time
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -36,15 +35,10 @@ def run_cleanup(dry_run: bool = False) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Clean expired unreferenced InfraRender media.")
-    parser.add_argument("--loop", action="store_true", help="Repeat daily; the API already runs this maintenance.")
     parser.add_argument("--dry-run", action="store_true", help="Preview only.")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
-    while True:
-        print(json.dumps(run_cleanup(dry_run=args.dry_run), ensure_ascii=False))
-        if not args.loop:
-            return
-        time.sleep(86400)
+    print(json.dumps(run_cleanup(dry_run=args.dry_run), ensure_ascii=False))
 
 
 if __name__ == "__main__":

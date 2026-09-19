@@ -13,17 +13,17 @@ readiness.
 | Next.js production build | PASS | CI `npm run build` |
 | Backend compile | PASS | CI `python -m compileall` |
 | Backend tests | PASS | CI unittest suite |
-| Docker frontend image | PASS | Docker integration CI |
-| Docker backend image | PASS | Docker integration CI |
-| Docker Compose local | PASS | CI config + smoke test |
-| Docker Compose production | PASS when CI green | CI config validation (compose.deploy.yaml) |
-| Self-host Caddy routing | PASS when CI green | CI `compose.test.yaml` smoke (frontend + /api/health + upload/media round trip) |
+| Docker frontend image | UNVERIFIED | Requires current CI Docker job |
+| Docker backend image | UNVERIFIED | Requires current CI Docker job |
+| Docker Compose local | UNVERIFIED | Requires current CI Docker job |
+| Docker Compose production | UNVERIFIED | Requires current CI Docker job |
+| Self-host Caddy routing | UNVERIFIED | Requires current CI `compose.test.yaml` smoke |
 | Persistent volumes | READY | stable named volumes |
 | Docker secret support | READY | `OPENAI_API_KEY_FILE` + `INFRARENDER_AUTH_PASS_FILE` |
 | HTTPS reverse proxy | READY | pinned Caddy + validated Caddyfile |
 | Request size protection | READY | Caddy `request_body` 22MiB + backend request/image limits |
 | Provider concurrency bound | READY | backend semaphore (2 AI operations) |
-| Request tracing | READY | `X-Request-ID` + backend metadata logs |
+| Request tracing | NOT IMPLEMENTED | No `X-Request-ID` middleware or metadata log contract |
 | Log rotation | READY | Docker json-file limits |
 | Resource limits | READY | Compose environment controls |
 | File retention | READY | backend lifecycle retention sweep (24h, `INFRARENDER_RETENTION_DAYS`) |

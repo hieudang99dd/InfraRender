@@ -64,6 +64,10 @@ secret_mode="$(stat -c '%a' secrets/openai_api_key.txt 2>/dev/null || true)"
 if [ "$secret_mode" != "600" ]; then
   echo "WARNING: secrets/openai_api_key.txt should have mode 600." >&2
 fi
+auth_secret_mode="$(stat -c '%a' secrets/infrarender_auth_pass.txt 2>/dev/null || true)"
+if [ "$auth_secret_mode" != "600" ]; then
+  echo "WARNING: secrets/infrarender_auth_pass.txt should have mode 600." >&2
+fi
 
 INFRARENDER_DOMAIN="${INFRARENDER_DOMAIN}" \
 docker compose -f compose.deploy.yaml config >/dev/null

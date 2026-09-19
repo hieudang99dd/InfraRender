@@ -49,4 +49,7 @@ jobs:
       - name: Deploy verified image tag
         shell: bash
         run: |
-          ssh -o BatchMode=yes             -i ~/.ssh/id_ed25519             "$PRODUCTION_USER@$PRODUCTION_HOST"             "cd '$PRODUCTION_PATH' && git fetch origin main && git checkout main && git reset --hard origin/main && bash ops/deploy.sh '$IMAGE_TAG'"
+          ssh -o BatchMode=yes \
+            -i ~/.ssh/id_ed25519 \
+            "$PRODUCTION_USER@$PRODUCTION_HOST" \
+            "cd '$PRODUCTION_PATH' && git fetch origin main && git checkout --detach '$IMAGE_TAG' && test \"\$(git rev-parse HEAD)\" = '$IMAGE_TAG' && bash ops/deploy.sh '$IMAGE_TAG'"

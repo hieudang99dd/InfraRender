@@ -12,7 +12,7 @@ STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 DEST="${BACKUP_ROOT%/}/${STAMP}"
 mkdir -p "$DEST"
 DEST_ABS="$(cd "$DEST" && pwd)"
-VOLUME="infrarender_data"
+VOLUME="${INFRARENDER_DATA_VOLUME:-infrarender_data}"
 STOPPED_CONTAINERS=()
 
 # Containers that mount the data volume could mutate SQLite or media. Stop them

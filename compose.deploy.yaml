@@ -2,12 +2,13 @@ name: infrarender
 
 services:
   backend:
-    image: ghcr.io/${GHCR_OWNER:-hieudang99dd}/infrarender-backend:${INFRARENDER_IMAGE_TAG:-latest}
+    image: ghcr.io/${GHCR_OWNER:-hieudang99dd}/infrarender-backend:${INFRARENDER_IMAGE_TAG:?Set INFRARENDER_IMAGE_TAG to a full Git SHA}
     environment:
       # -- Provider credentials (supply via secrets or env file on the host) --
       OPENAI_API_KEY: ""
       OPENAI_API_KEY_FILE: /run/secrets/openai_api_key
       OPENAI_IMAGE_MODEL: ${OPENAI_IMAGE_MODEL:-gpt-image-2}
+      OPENAI_PROMPT_MODEL: ${OPENAI_PROMPT_MODEL:-gpt-4o-mini}
       OPENAI_VISION_MODEL: ${OPENAI_VISION_MODEL:-gpt-4o-mini}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       # -- Storage: all persistent data (SQLite + uploads + outputs) under one volume --
@@ -55,7 +56,7 @@ services:
       start_period: 10s
 
   frontend:
-    image: ghcr.io/${GHCR_OWNER:-hieudang99dd}/infrarender-frontend:${INFRARENDER_IMAGE_TAG:-latest}
+    image: ghcr.io/${GHCR_OWNER:-hieudang99dd}/infrarender-frontend:${INFRARENDER_IMAGE_TAG:?Set INFRARENDER_IMAGE_TAG to a full Git SHA}
     # No runtime environment is needed: the static export reaches the backend
     # through the same origin, and Caddy routes /api, /uploads and /outputs to
     # the backend service.
@@ -127,7 +128,7 @@ secrets:
 volumes:
   # Single volume holds: projects.sqlite3 + uploads/ + outputs/
   infrarender_data:
-    name: infrarender_data
+    name: ${INFRARENDER_DATA_VOLUME:-infrarender_data}
   caddy_data:
     name: infrarender_caddy_data
   caddy_config:

@@ -9,6 +9,7 @@ services:
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_IMAGE_MODEL: ${OPENAI_IMAGE_MODEL:-gpt-image-2}
+      OPENAI_PROMPT_MODEL: ${OPENAI_PROMPT_MODEL:-gpt-4o-mini}
       OPENAI_VISION_MODEL: ${OPENAI_VISION_MODEL:-gpt-4o-mini}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       INFRARENDER_CORS_ORIGINS: ${INFRARENDER_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
@@ -84,4 +85,4 @@ services:
 
 volumes:
   infrarender_data:
-    name: infrarender_data
+    name: ${INFRARENDER_DATA_VOLUME:-infrarender_data}
