@@ -15,7 +15,7 @@ RUN test -f /app/out/index.html && test -d /app/out/_next
 # Use nginx:alpine but configure it to run as non-root (no chown required at runtime).
 # We pre-create the runtime directories owned by nginx uid 101 during the build step
 # so that no capability (CAP_CHOWN / CAP_SETUID) is needed at container start.
-FROM nginx:1.27-alpine AS runner
+FROM nginx:1.29-alpine AS runner
 
 # Copy static export
 COPY --from=builder /app/out /usr/share/nginx/html
