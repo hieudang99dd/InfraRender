@@ -12,7 +12,7 @@ if [ "${CONFIRM_RESTORE:-}" != "yes" ]; then
 fi
 
 SOURCE="$(cd "$1" && pwd)"
-for archive in infrarender_uploads.tar.gz infrarender_outputs.tar.gz; do
+for archive in infrarender_data.tar.gz; do
   if [ ! -f "$SOURCE/$archive" ]; then
     echo "Missing archive: $SOURCE/$archive" >&2
     exit 2
@@ -33,10 +33,9 @@ restore_volume() {
   fi
 
   docker volume create "$volume" >/dev/null
-  docker run --rm     -v "$volume:/target"     -v "$SOURCE:/backup:ro"     alpine:3.22     sh -c "find /target -mindepth 1 -maxdepth 1 -exec rm -rf {} + && tar -xzf /backup/$archive -C /target"
+  docker run --rm -v "$volume:/target" -v "$SOURCE:/backup:ro" alpine:3.22 sh -c "find /target -mindepth 1 -maxdepth 1 -exec rm -rf {} + && tar -xzf /backup/$archive -C /target"
 }
 
-restore_volume infrarender_uploads
-restore_volume infrarender_outputs
+restore_volume infrarender_data
 
 echo "Restore completed from: $SOURCE"

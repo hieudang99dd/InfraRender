@@ -30,8 +30,10 @@ docker compose -f compose.deploy.yaml up -d --remove-orphans
 healthy=0
 for attempt in {1..30}; do
   if curl --fail --silent --show-error --max-time 15 "https://$INFRARENDER_DOMAIN/api/health" >/tmp/infrarender-deploy-health.json; then
-    healthy=1
-    break
+    if jq -e '.status == "ok" and .service == "InfraRender AI Backend"' /tmp/infrarender-deploy-health.json >/dev/null; then
+      healthy=1
+      break
+    fi
   fi
   echo "Health check attempt $attempt/30 failed; retrying..." >&2
   sleep 5

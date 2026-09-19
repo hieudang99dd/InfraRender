@@ -14,6 +14,9 @@ fail=0
 if ! curl --fail --silent --show-error --max-time 15 "https://$DOMAIN/api/health" >/tmp/infrarender-health.json; then
   echo "ERROR: HTTPS health check failed for $DOMAIN" >&2
   fail=1
+elif ! jq -e '.status == "ok" and .service == "InfraRender AI Backend"' /tmp/infrarender-health.json >/dev/null; then
+  echo "ERROR: Health endpoint returned non-OK JSON or missing service field" >&2
+  fail=1
 else
   echo "OK: HTTPS health endpoint"
 fi

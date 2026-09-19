@@ -29,6 +29,16 @@ if [ ! -s secrets/openai_api_key.txt ]; then
   exit 2
 fi
 
+if [ ! -s secrets/infrarender_auth_pass.txt ]; then
+  echo "ERROR: secrets/infrarender_auth_pass.txt is missing or empty." >&2
+  exit 2
+fi
+auth_pass="$(cat secrets/infrarender_auth_pass.txt | tr -d '\r\n ')"
+if [ "${#auth_pass}" -lt 12 ]; then
+  echo "ERROR: secrets/infrarender_auth_pass.txt must be at least 12 characters." >&2
+  exit 2
+fi
+
 for command in docker curl git; do
   if ! command -v "$command" >/dev/null 2>&1; then
     echo "ERROR: required command not found: $command" >&2
