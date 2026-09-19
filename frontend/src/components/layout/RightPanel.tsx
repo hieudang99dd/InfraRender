@@ -317,12 +317,8 @@ export default function RightPanel({
         <SettingSection
           title="Từ khóa bổ sung"
           icon={<Tags size={17} />}
-          description="Thêm bất kỳ yêu cầu thiết kế, địa điểm, vật liệu hay bối cảnh bằng tiếng Việt hoặc ngôn ngữ bạn muốn."
           defaultOpen
         >
-          <label className={styles.fieldLabel} htmlFor={`${id}-keyword`}>
-            Từ khóa hoặc cụm từ kỹ thuật
-          </label>
           <div className={styles.keywordEntry}>
             <input
               ref={keywordInput}
@@ -332,7 +328,7 @@ export default function RightPanel({
               placeholder="Ví dụ: nút giao khác mức, dải phân cách cứng"
               value={keywordDraft}
               aria-invalid={Boolean(keywordError)}
-              aria-describedby={`${id}-keyword-help${keywordError ? ` ${id}-keyword-error` : ""}`}
+              aria-describedby={keywordError ? `${id}-keyword-error` : undefined}
               onChange={(event) => {
                 setKeywordDraft(event.target.value);
                 setKeywordError("");
@@ -354,10 +350,6 @@ export default function RightPanel({
               Thêm
             </button>
           </div>
-          <p id={`${id}-keyword-help`} className={styles.keywordHint}>
-            Nhấn Enter hoặc Thêm để lưu từng cụm từ. Tối đa {MAX_CUSTOM_KEYWORDS} từ khóa, mỗi từ
-            khóa {MAX_CUSTOM_KEYWORD_LENGTH} ký tự.
-          </p>
           {keywordError && (
             <p id={`${id}-keyword-error`} className={styles.keywordError} role="alert">
               {keywordError}
