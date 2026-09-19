@@ -37,13 +37,12 @@ for service in backend frontend; do
   fi
 done
 
-for service in caddy; do
-  container="$(docker compose -f compose.deploy.yaml ps -q "$service" 2>/dev/null || true)"
-  if [ -z "$container" ]; then
-    echo "ERROR: $service container is not present" >&2
-    fail=1
-    continue
-  fi
+service=caddy
+container="$(docker compose -f compose.deploy.yaml ps -q "$service" 2>/dev/null || true)"
+if [ -z "$container" ]; then
+  echo "ERROR: $service container is not present" >&2
+  fail=1
+else
   state="$(docker inspect --format '{{.State.Status}}' "$container")"
   if [ "$state" != "running" ]; then
     echo "ERROR: $service status=$state" >&2
@@ -51,7 +50,7 @@ for service in caddy; do
   else
     echo "OK: $service running"
   fi
-done
+fi
 
 disk_percent="$(df -P /var/lib/docker 2>/dev/null | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
 if [ -z "$disk_percent" ]; then
