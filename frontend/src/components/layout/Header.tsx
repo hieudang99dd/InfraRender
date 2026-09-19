@@ -17,9 +17,6 @@ export default function Header({ workspace: w }: HeaderProps) {
   const [localName, setLocalName] = useState(w.projectName);
   const [isEditingName, setIsEditingName] = useState(false);
 
-  useEffect(() => {
-    if (!isEditingName) setLocalName(w.projectName);
-  }, [w.projectName, isEditingName]);
 
   const commitName = () => {
     const finalName = localName.trim() || "Dự án chưa đặt tên";

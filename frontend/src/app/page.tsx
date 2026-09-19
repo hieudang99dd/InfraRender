@@ -11,7 +11,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { useRenderService } from "@/hooks/useRenderService";
 import LoginScreen from "@/components/layout/LoginScreen";
 import { useEffect, useState } from "react";
-import { apiRequest, getAccessToken, getBackendUrl } from "@/lib/api";
+import { apiRequest, getAccessToken } from "@/lib/api";
 
 export default function Home() {
   const workspace = useWorkspace();
