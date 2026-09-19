@@ -110,6 +110,12 @@ services:
       frontend:
         condition: service_healthy
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
     pids_limit: 128
     mem_limit: ${CADDY_MEMORY_LIMIT:-256m}
     cpus: ${CADDY_CPU_LIMIT:-0.50}
