@@ -15,7 +15,7 @@ RUN test -f /app/out/index.html && test -d /app/out/_next
 # Nginx configuration is owned by this repository (nginx.conf), so no runtime
 # string-patching of the upstream image is needed and no capability such as
 # CAP_CHOWN / CAP_SETUID / CAP_NET_BIND_SERVICE is required at container start.
-FROM nginx:1.27-alpine AS runner
+FROM nginx:1.29-alpine AS runner
 
 # Copy static export and our nginx configuration.
 COPY --from=builder /app/out /usr/share/nginx/html
