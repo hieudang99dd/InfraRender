@@ -83,6 +83,7 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
         <h1>InfraRender</h1>
         <p className="login-subtitle">Architectural & Infrastructure Rendering</p>
         
+        <h2 className="login-heading-small">Đăng nhập hệ thống</h2>
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
             <label htmlFor="login-user" className="sr-only">Tài khoản</label>

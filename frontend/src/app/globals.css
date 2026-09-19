@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 .workspace-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
-.project-bar { padding: 14px clamp(16px, 3vw, 44px); border-bottom: 1px solid var(--border); background: var(--surface); }
-.project-controls { display: flex; gap: 11px; flex-wrap: wrap; align-items: center; }
+
+
 .project-controls select, .project-controls input, .prompt-engine-select { border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--foreground); min-height: 36px; padding: 6px 11px; max-width: 100%; }
 .project-controls select { max-width: 300px; flex: 0 1 250px; }
 .save-status, .engine-help, .output-details, .history-meta { color: var(--muted); font-size: 13px; }
-.project-management { margin-top: 8px; color: var(--muted); font-size: 13px; }
+
 .project-management summary, .prompt-analysis summary { cursor: pointer; width: fit-content; padding: 5px 0; }
-.project-management-content { display: grid; gap: 13px; margin-top: 11px; }
+
 .project-management-content p { margin: 0; }
 .project-management .button-group { flex-wrap: wrap; }
 .prompt-engine-select { width: 100%; margin: 6px 0; }
@@ -295,19 +295,8 @@ svg {
 .version-delete:hover {
   color: var(--danger);
 }
-.render-action-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding-top: 18px;
-  margin-top: 18px;
-  border-top: 1px solid var(--border);
-}
-.render-service-copy {
-  flex: 1;
-  min-width: 0;
-}
+
+
 .render-service-copy strong {
   display: block;
   font-size: 13px;
@@ -324,12 +313,7 @@ svg {
   padding-left: 0;
   color: var(--accent);
 }
-.render-button {
-  min-height: 44px;
-  min-width: 132px;
-  font-size: 13px;
-  flex-shrink: 0;
-}
+
 .spin {
   animation: spin 1s linear infinite;
 }
@@ -340,6 +324,24 @@ svg {
 }
 
 
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.workspace-fieldset {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
 html, body {
   height: 100%;
   overflow: hidden;
@@ -914,14 +916,8 @@ html, body {
   .button-group > button {
     flex: 1;
   }
-  .render-action-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 13px;
-  }
-  .render-button {
-    width: 100%;
-  }
+  
+  
   .notes-input,
   .prompt-editor {
     font-size: 14px;
@@ -982,3 +978,7 @@ html, body {
 
 .version-card.is-active { border-color: var(--accent); background-color: color-mix(in srgb, var(--accent) 5%, transparent); box-shadow: 0 0 0 1px var(--accent); }
 .active-badge { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); font-size: 0.8rem; font-weight: 500; margin-left: 8px; }
+
+.promptGeneratorActions { margin-bottom: 16px; margin-top: 12px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+.promptSaveRow { margin-top: 16px; }
+.history-active-badge { margin-right: 8px; }

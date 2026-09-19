@@ -88,6 +88,33 @@ export function updateRenderSetting<K extends keyof RenderSettings>(
   return { ...settings, [key]: value };
 }
 
+export function isDefaultRenderSettings(settings: RenderSettings): boolean {
+  return (
+    settings.weather === DEFAULT_SETTINGS.weather &&
+    settings.lighting === DEFAULT_SETTINGS.lighting &&
+    settings.vehicles === DEFAULT_SETTINGS.vehicles &&
+    settings.vehicles_density === DEFAULT_SETTINGS.vehicles_density &&
+    settings.vegetation === DEFAULT_SETTINGS.vegetation &&
+    settings.vegetation_density === DEFAULT_SETTINGS.vegetation_density &&
+    settings.buildings === DEFAULT_SETTINGS.buildings &&
+    settings.buildings_density === DEFAULT_SETTINGS.buildings_density &&
+    settings.style === DEFAULT_SETTINGS.style &&
+    settings.camera === DEFAULT_SETTINGS.camera &&
+    settings.quality === DEFAULT_SETTINGS.quality &&
+    settings.aspect_ratio === DEFAULT_SETTINGS.aspect_ratio &&
+    settings.preserve_geometry === DEFAULT_SETTINGS.preserve_geometry &&
+    settings.preserve_road_markings === DEFAULT_SETTINGS.preserve_road_markings &&
+    settings.creativity === DEFAULT_SETTINGS.creativity &&
+    settings.custom_keywords.length === 0
+  );
+}
+
+export function getOutputSummary(settings: RenderSettings): string {
+  const quality = !settings.quality || settings.quality === "Original" ? "Gốc" : settings.quality;
+  const ratio = !settings.aspect_ratio || settings.aspect_ratio === "Original" ? "Tỷ lệ gốc" : settings.aspect_ratio;
+  return `${quality} · ${ratio}`;
+}
+
 export function toPromptRequest(
   settings: RenderSettings,
   notes: string,

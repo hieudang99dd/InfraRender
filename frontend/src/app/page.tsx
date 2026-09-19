@@ -12,6 +12,7 @@ import { useRenderService } from "@/hooks/useRenderService";
 import LoginScreen from "@/components/layout/LoginScreen";
 import { useEffect, useState } from "react";
 import { apiRequest, getAccessToken } from "@/lib/api";
+import { isDefaultRenderSettings, getOutputSummary } from "@/lib/render-settings";
 
 export default function Home() {
   const workspace = useWorkspace();
@@ -150,10 +151,11 @@ export default function Home() {
           canRender={Boolean(workspace.source && "saved_name" in workspace.source) && !workspace.isUploading && Boolean(workspace.prompt.trim()) && Boolean(renderService.service?.configured)}
           onGenerate={workspace.generatePrompt}
           onRender={workspace.renderImage}
-          isSettingsCustom={workspace.settings.preserve_geometry !== true || workspace.settings.camera !== "preserve the original camera perspective" || workspace.settings.creativity !== 1}
-          outputSummary={workspace.settings.quality === "Original" ? "Kích thước ảnh gốc" : `Kích thước: ${workspace.settings.quality} (${workspace.settings.aspect_ratio})`}
+          isSettingsCustom={!isDefaultRenderSettings(workspace.settings)}
+          outputSummary={getOutputSummary(workspace.settings)}
           renderChecking={renderService.checking}
           renderConfigured={Boolean(renderService.service?.configured)}
+          renderReady={Boolean(renderService.service?.ready)}
           onRefreshEngine={renderService.refresh}
         />
       </div>

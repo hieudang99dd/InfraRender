@@ -133,7 +133,7 @@ export default function PromptDock({
           placeholder="Ví dụ: giữ nguyên nút giao, thêm cây xanh ở dải phân cách và ánh sáng chiều ấm…"
         />
 
-        <div className="prompt-actions" style={{ marginBottom: "16px", marginTop: "12px", borderBottom: "1px solid var(--border)", paddingBottom: "16px" }}>
+        <div className={`prompt-actions promptGeneratorActions`}>
           <p>
             <span className={`status-dot ${canGenerate ? "online" : ""}`} />
             {canGenerate ? "Ảnh tham chiếu đã sẵn sàng" : "Thêm ảnh tham chiếu để bắt đầu"}
@@ -259,7 +259,7 @@ export default function PromptDock({
           </p>
         )}
         
-        <div style={{ marginTop: "16px" }}>
+        <div className="promptSaveRow">
           <button
             type="button"
             className="button button-secondary"

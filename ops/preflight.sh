@@ -33,7 +33,7 @@ if [ ! -s secrets/infrarender_auth_pass.txt ]; then
   echo "ERROR: secrets/infrarender_auth_pass.txt is missing or empty." >&2
   exit 2
 fi
-auth_pass="$(cat secrets/infrarender_auth_pass.txt | tr -d '\r\n ')"
+auth_pass="$(tr -d '\r\n ' < secrets/infrarender_auth_pass.txt)"
 if [ "${#auth_pass}" -lt 12 ]; then
   echo "ERROR: secrets/infrarender_auth_pass.txt must be at least 12 characters." >&2
   exit 2

@@ -14,6 +14,7 @@ type Props = {
   outputSummary: string;
   renderChecking: boolean;
   renderConfigured: boolean;
+  renderReady: boolean;
   onRefreshEngine: () => void;
 };
 
@@ -30,20 +31,37 @@ export default function WorkflowBar({
   outputSummary,
   renderChecking,
   renderConfigured,
+  renderReady,
   onRefreshEngine
 }: Props) {
+  let engineClass = styles.engineUnavailable;
+  let engineText = "Render Engine chưa cấu hình";
+  if (renderChecking) {
+    engineClass = styles.engineChecking;
+    engineText = "Đang kiểm tra Render Engine…";
+  } else if (renderReady) {
+    engineClass = styles.engineReady;
+    engineText = "Render Engine sẵn sàng";
+  } else if (renderConfigured) {
+    engineClass = styles.engineConfigured;
+    engineText = "Render Engine đã cấu hình";
+  }
+
+  const renderDisabledReason = isRendering ? "Đang render ảnh" : isGenerating ? "Đang xử lý prompt" : !hasSource ? "Thêm ảnh gốc trước" : !hasPrompt ? "Cần có prompt" : !renderConfigured ? "Render Engine chưa cấu hình" : undefined;
+  const generateDisabledReason = isGenerating ? "Đang xử lý prompt" : isRendering ? "Đang render ảnh" : !hasSource ? "Thêm ảnh gốc trước" : undefined;
+
   return (
     <div className={styles.bar}>
       <div className={styles.statusGroup}>
-        <div className={`${styles.statusItem} ${hasSource ? styles.ready : ""}`}>
+        <div className={`${styles.statusItem} ${hasSource ? styles.success : styles.muted}`}>
           <div className={styles.dot}></div>
           <span>Ảnh gốc</span>
         </div>
-        <div className={`${styles.statusItem} ${isSettingsCustom ? styles.custom : styles.ready}`}>
+        <div className={`${styles.statusItem} ${isSettingsCustom ? styles.custom : styles.muted}`}>
           <div className={styles.dot}></div>
           <span>Thiết lập: {isSettingsCustom ? "Đã tùy chỉnh" : "Mặc định"}</span>
         </div>
-        <div className={`${styles.statusItem} ${hasPrompt ? styles.ready : ""}`}>
+        <div className={`${styles.statusItem} ${hasPrompt ? styles.success : styles.muted}`}>
           <div className={styles.dot}></div>
           <span>Prompt</span>
         </div>
@@ -54,17 +72,12 @@ export default function WorkflowBar({
 
       <div className={styles.actions}>
         <div className={styles.engineStatus}>
-          {renderChecking ? (
-            <span className={styles.engineText}><div className={styles.dot} style={{ background: "var(--accent)" }}></div>Đang kiểm tra Render Engine…</span>
-          ) : renderConfigured ? (
-            <span className={styles.engineText}><div className={styles.dot} style={{ background: "var(--success)" }}></div>Render Engine sẵn sàng</span>
-          ) : (
-            <span className={styles.engineText} style={{ color: "var(--danger)" }}>
-              <AlertTriangle size={13} style={{ marginRight: "4px", verticalAlign: "text-bottom" }} />
-              Render Engine chưa kết nối
-            </span>
-          )}
-          {!renderChecking && !renderConfigured && (
+          <span className={`${styles.engineText} ${engineClass}`}>
+            {!renderChecking && !renderReady && !renderConfigured && <AlertTriangle size={13} style={{ marginRight: "4px", verticalAlign: "text-bottom" }} />}
+            <div className={styles.dot}></div>
+            {engineText}
+          </span>
+          {!renderChecking && (!renderConfigured || !renderReady) && (
              <button className={styles.refreshEngineBtn} onClick={onRefreshEngine} title="Kiểm tra lại">
                 <RefreshCw size={13} /> Kiểm tra lại
              </button>
@@ -75,6 +88,7 @@ export default function WorkflowBar({
           className="button button-secondary"
           disabled={!canGenerate || isGenerating || isRendering}
           onClick={onGenerate}
+          title={generateDisabledReason}
         >
           <Sparkles size={16} />
           <span>{isGenerating ? "Đang xử lý…" : (hasPrompt ? "Cập nhật prompt" : "Tạo prompt")}</span>
@@ -84,6 +98,7 @@ export default function WorkflowBar({
           className="button button-primary"
           disabled={!canRender || isGenerating || isRendering}
           onClick={onRender}
+          title={renderDisabledReason}
         >
           <WandSparkles size={16} />
           <span>{isRendering ? "Đang render…" : "Render ảnh"}</span>

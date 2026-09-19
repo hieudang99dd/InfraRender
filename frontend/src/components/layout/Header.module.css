@@ -172,3 +172,17 @@
 .projectDropdownDivider { height: 1px; background: var(--border); margin: 4px 0; }
 .projectDropdownButton { width: 36px; height: 100%; display: flex; align-items: center; justify-content: center; background: transparent; border: none; cursor: pointer; color: var(--muted); }
 .projectDropdownButton:hover { color: var(--foreground); }
+.confirmNameButton { margin-left: 4px; width: 26px; height: 26px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--success); }
+.confirmNameButton:hover { opacity: 0.8; }
+.chevronIcon { transition: transform 0.2s ease; }
+.menuOpen .chevronIcon { transform: rotate(180deg); }
+.menuCheckVisible { visibility: visible; flex-shrink: 0; }
+.menuCheckHidden { visibility: hidden; flex-shrink: 0; }
+.activeProjectName { font-weight: 600; color: var(--foreground); }
+.projectNameText { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.menuItemActive { background: var(--surface-2); }
+
+.clickableErrorPill { cursor: pointer; border: none; }
+.staticErrorPill { cursor: default; border: none; }
+.exportFloatingStatus { position: absolute; top: 100%; right: 0; width: max-content; }
+.projectDropdown { max-height: 400px; overflow-y: auto; }

@@ -102,12 +102,12 @@ export default function Header({ workspace: w }: HeaderProps) {
             {isEditingName && (
               <button 
                 type="button"
-                className="icon-button" 
-                style={{ marginLeft: '4px', width: '26px', height: '26px', border: 'none', background: 'transparent' }}
+                className={styles.confirmNameButton} 
                 onClick={commitName}
                 title="Đồng ý"
+                aria-label="Đồng ý đổi tên"
               >
-                <Check size={16} color="var(--success)" />
+                <Check size={16} />
               </button>
             )}
           </div>
@@ -115,21 +115,22 @@ export default function Header({ workspace: w }: HeaderProps) {
           <div className={styles.divider}></div>
           
           <button 
-            className={styles.projectDropdownButton} 
+            className={`${styles.projectDropdownButton} ${projectMenuOpen ? styles.menuOpen : ""}`} 
             onClick={() => setProjectMenuOpen(!projectMenuOpen)}
             aria-haspopup="menu"
             aria-expanded={projectMenuOpen}
+            aria-label="Danh sách dự án"
             title="Danh sách dự án"
           >
-            <ChevronDown size={16} />
+            <ChevronDown size={16} className={styles.chevronIcon} />
           </button>
 
           {projectMenuOpen && (
             <div className={styles.projectDropdown} role="menu">
               {!w.projectId && (
                 <button className={styles.menuItem} role="menuitem" disabled>
-                  <Check size={14} style={{ visibility: "visible" }} />
-                  <span>-- Bản nháp mới --</span>
+                  <Check size={14} className={styles.menuCheckVisible} />
+                  <span className={styles.projectNameText}>Bản nháp mới</span>
                 </button>
               )}
               {w.projects.map(p => {
@@ -137,7 +138,7 @@ export default function Header({ workspace: w }: HeaderProps) {
                 return (
                   <button 
                     key={p.id} 
-                    className={styles.menuItem}
+                    className={`${styles.menuItem} ${isActive ? styles.menuItemActive : ""}`}
                     role="menuitem"
                     disabled={busy}
                     onClick={() => {
@@ -145,8 +146,8 @@ export default function Header({ workspace: w }: HeaderProps) {
                       if (!isActive) void w.switchProject(p.id);
                     }}
                   >
-                    <Check size={14} style={{ visibility: isActive ? "visible" : "hidden" }} />
-                    <span style={{ fontWeight: isActive ? 600 : 400 }}>{p.name}</span>
+                    <Check size={14} className={isActive ? styles.menuCheckVisible : styles.menuCheckHidden} />
+                    <span className={`${styles.projectNameText} ${isActive ? styles.activeProjectName : ""}`}>{p.name}</span>
                   </button>
                 );
               })}
@@ -160,7 +161,7 @@ export default function Header({ workspace: w }: HeaderProps) {
                   w.resetProject();
                 }}
               >
-                <FilePlus size={14} style={{ visibility: "hidden" }} />
+                <FilePlus size={14} className={styles.menuCheckHidden} />
                 <span>+ Dự án mới</span>
               </button>
             </div>
@@ -172,9 +173,8 @@ export default function Header({ workspace: w }: HeaderProps) {
         {w.saveError && (
           <button 
             title={w.saveError} 
-            className={styles.errorPill}
+            className={`${styles.errorPill} ${w.conflict ? styles.clickableErrorPill : styles.staticErrorPill}`}
             onClick={() => setMenuOpen(true)}
-            style={{ cursor: w.conflict ? 'pointer' : 'default', border: 'none' }}
           >
             <AlertCircle size={15} />
             <span>{w.conflict ? "Dự án đã thay đổi ở nơi khác" : "Lỗi đồng bộ"}</span>
@@ -202,7 +202,7 @@ export default function Header({ workspace: w }: HeaderProps) {
           </button>
           
           {w.isExporting && exportLabel && !menuOpen && (
-             <div style={{ position: 'absolute', top: '100%', right: 0, width: 'max-content' }}>
+             <div className={styles.exportFloatingStatus}>
                <div className={styles.exportProgress}>{exportLabel}</div>
              </div>
           )}

@@ -12,12 +12,11 @@ if [ "${CONFIRM_RESTORE:-}" != "yes" ]; then
 fi
 
 SOURCE="$(cd "$1" && pwd)"
-for archive in infrarender_data.tar.gz; do
-  if [ ! -f "$SOURCE/$archive" ]; then
-    echo "Missing archive: $SOURCE/$archive" >&2
-    exit 2
-  fi
-done
+archive="infrarender_data.tar.gz"
+if [ ! -f "$SOURCE/$archive" ]; then
+  echo "Missing archive: $SOURCE/$archive" >&2
+  exit 2
+fi
 
 if [ -f "$SOURCE/SHA256SUMS" ]; then
   (cd "$SOURCE" && sha256sum -c SHA256SUMS)

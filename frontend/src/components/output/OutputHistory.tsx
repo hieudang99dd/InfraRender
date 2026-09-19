@@ -46,7 +46,7 @@ export default function OutputHistory({versions,renderVersions,activeVersion,act
         <div className="version-topline">
           <span><FileText size={14}/>{time(v.createdAt)}</span>
           <div className="version-controls">
-            {activeVersion === v.id && <span className="active-badge" style={{ marginRight: '8px' }}><Check size={14}/> Đang mở</span>}
+            {activeVersion === v.id && <span className="active-badge history-active-badge"><Check size={14}/> Đang mở</span>}
             <button className="version-star" aria-label={v.favorite?"Bỏ yêu thích prompt":"Yêu thích prompt"} aria-pressed={v.favorite} onClick={()=>onToggleFavorite(v.id)}><Star size={15} fill={v.favorite?"currentColor":"none"}/></button>
             <button className="version-delete" aria-label="Xóa phiên bản prompt" onClick={()=>onDelete(v.id)}><Trash2 size={13}/></button>
           </div>

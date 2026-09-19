@@ -316,9 +316,8 @@ export default function RightPanel({
 
       <fieldset className={styles.settings} disabled={isBusy} aria-label="Thông số thiết kế">
         <div className={styles.quickPresets}>
-          <p className={styles.presetLabel}>
-            Preset nhanh
-            {!QUICK_PRESETS.some((p) => p.matches(settings)) && " (Đã tùy chỉnh)"}
+          <p className={styles.presetLabel} id="quick-presets-label">
+            Thiết lập nhanh
           </p>
           <div className={styles.presetList}>
             {QUICK_PRESETS.map((preset) => {

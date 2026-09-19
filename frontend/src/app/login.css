@@ -1,178 +1,25 @@
-.login-screen {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* Dark background instead of surface to create contrast with the card */
-  background-color: var(--background); 
-  z-index: 1000;
-  font-family: var(--font-body, system-ui, sans-serif);
-}
-
-.login-box {
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 13px;
-  padding: 2.5rem 2rem;
-  width: 100%;
-  max-width: 420px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.login-box.checking {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  padding: 3rem;
-}
-
-.login-box h1 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-  text-align: center;
-  color: var(--foreground);
-  letter-spacing: -0.02em;
-}
-
-.login-subtitle {
-  color: var(--muted);
-  text-align: center;
-  margin-bottom: 2rem;
-  font-size: 0.9rem;
-}
-
-.login-form .form-group {
-  margin-bottom: 1.25rem;
-}
-
-.login-form input[type="text"],
-.login-form input[type="password"] {
-  width: 100%;
-  padding: 0.875rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background-color: transparent; /* Clean input background */
-  color: var(--foreground);
-  font-size: 0.95rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.login-form input[type="text"]:focus,
-.login-form input[type="password"]:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
-
-.login-form input::placeholder {
-  color: var(--muted);
-  opacity: 0.7;
-}
-
-/* Input with icon (password toggle) */
-.input-with-icon {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-with-icon input {
-  padding-right: 2.5rem; /* space for icon */
-}
-
-.input-with-icon .icon-btn {
-  position: absolute;
-  right: 0.75rem;
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.input-with-icon .icon-btn:hover {
-  color: var(--foreground);
-}
-
-.login-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  font-size: 0.875rem;
-  color: var(--muted);
-}
-
-.remember-me {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-}
-
-.remember-me input[type="checkbox"] {
-  width: 1rem;
-  height: 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  accent-color: var(--accent);
-}
-
-.login-error {
-  color: var(--danger);
-  font-size: 0.875rem;
-  margin-bottom: 1rem;
-  text-align: center;
-}
-
-.login-btn {
-  width: 100%;
-  justify-content: center;
-  padding: 0.875rem;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  background-color: var(--accent);
-  color: white;
-  border: none;
-  transition: opacity 0.2s, transform 0.1s;
-}
-
-.login-btn:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.login-btn:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.login-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Spinner for checking state */
-.spinner {
-  width: 2rem;
-  height: 2rem;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
+.login-screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background-color: var(--background); z-index: 1000; font-family: var(--font-body, system-ui, sans-serif); }
+.login-box { background-color: var(--surface); border: 1px solid var(--border); border-radius: 13px; padding: 2.5rem 2rem; width: 100%; max-width: 420px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); }
+.login-box.checking { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 3rem; }
+.login-box h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; text-align: center; color: var(--foreground); letter-spacing: -0.02em; }
+.login-subtitle { color: var(--muted); text-align: center; margin-bottom: 2rem; font-size: 0.9rem; }
+.login-form .form-group { margin-bottom: 1.25rem; }
+.login-form input[type="text"], .login-form input[type="password"] { width: 100%; padding: 0.875rem 1rem; border: 1px solid var(--border); border-radius: 8px; background-color: transparent; color: var(--foreground); font-size: 0.95rem; transition: border-color 0.2s, box-shadow 0.2s; }
+.login-form input[type="text"]:focus, .login-form input[type="password"]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.login-form input::placeholder { color: var(--muted); opacity: 0.7; }
+.input-with-icon { position: relative; display: flex; align-items: center; }
+.input-with-icon input { padding-right: 2.5rem; }
+.input-with-icon .icon-btn { position: absolute; right: 0.75rem; background: none; border: none; padding: 0; color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.input-with-icon .icon-btn:hover { color: var(--foreground); }
+.login-error { color: var(--danger); font-size: 0.875rem; margin-bottom: 1rem; text-align: center; }
+.login-btn { width: 100%; justify-content: center; padding: 0.875rem; border-radius: 8px; font-size: 1rem; font-weight: 600; background-color: var(--accent); color: var(--accent-foreground); border: none; transition: opacity 0.2s, transform 0.1s; }
+.login-btn:hover:not(:disabled) { opacity: 0.9; }
+.login-btn:active:not(:disabled) { transform: scale(0.98); }
+.login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.spinner { width: 2rem; height: 2rem; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .login-brand { display: flex; justify-content: center; margin-bottom: 1rem; }
 .login-box:not(.checking) .login-brand { color: var(--foreground); }
 .login-box.checking .login-brand { color: var(--accent); }
 .login-delay-msg { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; text-align: center; }
+.login-heading-small { font-weight: 500; margin-top: 1rem; margin-bottom: 1rem; font-size: 1.1rem; text-align: center; }
