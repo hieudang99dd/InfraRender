@@ -13,8 +13,6 @@ set +a
 
 required_vars=(
   INFRARENDER_DOMAIN
-  INFRARENDER_BASIC_AUTH_USER
-  INFRARENDER_BASIC_AUTH_HASH
 )
 
 for name in "${required_vars[@]}"; do
@@ -61,10 +59,6 @@ if ! [[ "${INFRARENDER_DOMAIN}" =~ ^[A-Za-z0-9.-]+$ ]] || [[ "${INFRARENDER_DOMA
   exit 2
 fi
 
-if ! [[ "${INFRARENDER_BASIC_AUTH_HASH}" =~ ^\$2[aby]\$ ]]; then
-  echo "ERROR: INFRARENDER_BASIC_AUTH_HASH must be a Caddy-compatible bcrypt hash." >&2
-  exit 2
-fi
 
 secret_mode="$(stat -c '%a' secrets/openai_api_key.txt 2>/dev/null || true)"
 if [ "$secret_mode" != "600" ]; then
@@ -72,8 +66,6 @@ if [ "$secret_mode" != "600" ]; then
 fi
 
 INFRARENDER_DOMAIN="${INFRARENDER_DOMAIN}" \
-INFRARENDER_BASIC_AUTH_USER="${INFRARENDER_BASIC_AUTH_USER}" \
-INFRARENDER_BASIC_AUTH_HASH="${INFRARENDER_BASIC_AUTH_HASH}" \
 docker compose -f compose.deploy.yaml config >/dev/null
 
 echo "Production preflight passed."
