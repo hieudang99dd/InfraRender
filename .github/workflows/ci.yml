@@ -222,6 +222,8 @@ jobs:
             exit 1
           fi
           name="$(jq -r '.saved_name' /tmp/upload.json)"
+          test -n "$name"
+          echo "CI_UPLOAD_NAME=$name" >> "$GITHUB_ENV"
           curl --resolve localhost:8443:127.0.0.1 -k --fail --silent --show-error --max-time 15 "https://localhost:8443/uploads/$name" -o /tmp/downloaded.png
           if ! cmp -s /tmp/pixel.png /tmp/downloaded.png; then
             echo "Downloaded media differs from uploaded bytes"
@@ -233,8 +235,9 @@ jobs:
         run: |
           backup_root="$(mktemp -d)"
           project_name="CI recovery project"
-          project_payload="$(jq -n --arg name "$project_name" --arg saved "$name" '{name: $name, workspace: {source: {saved_name: $saved}}}')"
-          project_id="$(curl -k --fail --silent --show-error -H 'Content-Type: application/json' -d "$project_payload" https://localhost:8443/api/projects | jq -r '.id')"
+          test -n "${CI_UPLOAD_NAME:-}"
+          project_payload="$(jq -n --arg name "$project_name" --arg saved "$CI_UPLOAD_NAME" '{name: $name, workspace: {source: {saved_name: $saved}}}')"
+          project_id="$(curl --resolve localhost:8443:127.0.0.1 -k --fail --silent --show-error --max-time 15 -H 'Content-Type: application/json' -d "$project_payload" https://localhost:8443/api/projects | jq -r '.id')"
           if [ -z "$project_id" ] || [ "$project_id" = "null" ]; then
             echo "Project creation failed during recovery smoke"
             exit 1
@@ -269,7 +272,7 @@ jobs:
             exit 1
           fi
           curl --fail --silent --show-error "http://127.0.0.1:8000/api/projects/$project_id" | jq -e --arg name "$project_name" '.name == $name' >/dev/null
-          curl --fail --silent --show-error "http://127.0.0.1:8000/uploads/$name" -o /tmp/restored.png
+          curl --fail --silent --show-error "http://127.0.0.1:8000/uploads/$CI_UPLOAD_NAME" -o /tmp/restored.png
           cmp -s /tmp/pixel.png /tmp/restored.png
           rm -rf "$backup_root"
           echo "Disposable backup/restore smoke: PASS"
