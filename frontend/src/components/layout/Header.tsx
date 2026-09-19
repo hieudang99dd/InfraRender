@@ -1,4 +1,17 @@
-import { Box, LogOut, FilePlus, Save, Trash2, Archive, ChevronDown, AlertCircle, MoreHorizontal, RefreshCw, Copy, Check } from "lucide-react";
+import {
+  Box,
+  LogOut,
+  FilePlus,
+  Save,
+  Trash2,
+  Archive,
+  ChevronDown,
+  AlertCircle,
+  MoreHorizontal,
+  RefreshCw,
+  Copy,
+  Check,
+} from "lucide-react";
 import type { useWorkspace } from "@/hooks/useWorkspace";
 import { setAccessToken } from "@/lib/api";
 import { useState, useRef, useEffect } from "react";
@@ -13,8 +26,10 @@ export default function Header({ workspace: w }: HeaderProps) {
   const hasData = Boolean(w.source || w.renderVersions.length > 0 || w.prompt.trim());
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const projectMenuRef = useRef<HTMLDivElement>(null);
+  const projectTriggerRef = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
 
   const [localName, setLocalName] = useState(w.projectName);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -100,9 +115,9 @@ export default function Header({ workspace: w }: HeaderProps) {
               title="Bấm để đổi tên dự án"
             />
             {isEditingName && (
-              <button 
+              <button
                 type="button"
-                className={styles.confirmNameButton} 
+                className={styles.confirmNameButton}
                 onClick={commitName}
                 title="Đồng ý"
                 aria-label="Đồng ý đổi tên"
@@ -111,13 +126,13 @@ export default function Header({ workspace: w }: HeaderProps) {
               </button>
             )}
           </div>
-          
+
           <div className={styles.divider}></div>
-          
-          <button 
-            className={`${styles.projectDropdownButton} ${projectMenuOpen ? styles.menuOpen : ""}`} 
+
+          <button
+            className={`${styles.projectDropdownButton} ${projectMenuOpen ? styles.menuOpen : ""}`}
             onClick={() => setProjectMenuOpen(!projectMenuOpen)}
-            aria-haspopup="menu"
+            aria-haspopup="true"
             aria-expanded={projectMenuOpen}
             aria-label="Danh sách dự án"
             title="Danh sách dự án"
@@ -126,35 +141,42 @@ export default function Header({ workspace: w }: HeaderProps) {
           </button>
 
           {projectMenuOpen && (
-            <div className={styles.projectDropdown} role="menu">
+            <div className={styles.projectDropdown}>
               {!w.projectId && (
-                <button className={styles.menuItem} role="menuitem" disabled>
+                <button className={styles.menuItem} disabled>
                   <Check size={14} className={styles.menuCheckVisible} />
                   <span className={styles.projectNameText}>Bản nháp mới</span>
                 </button>
               )}
-              {w.projects.map(p => {
+              {w.projects.map((p) => {
                 const isActive = p.id === w.projectId;
                 return (
-                  <button 
-                    key={p.id} 
+                  <button
+                    key={p.id}
                     className={`${styles.menuItem} ${isActive ? styles.menuItemActive : ""}`}
-                    role="menuitem"
+
                     disabled={busy}
                     onClick={() => {
                       setProjectMenuOpen(false);
                       if (!isActive) void w.switchProject(p.id);
                     }}
                   >
-                    <Check size={14} className={isActive ? styles.menuCheckVisible : styles.menuCheckHidden} />
-                    <span className={`${styles.projectNameText} ${isActive ? styles.activeProjectName : ""}`}>{p.name}</span>
+                    <Check
+                      size={14}
+                      className={isActive ? styles.menuCheckVisible : styles.menuCheckHidden}
+                    />
+                    <span
+                      className={`${styles.projectNameText} ${isActive ? styles.activeProjectName : ""}`}
+                    >
+                      {p.name}
+                    </span>
                   </button>
                 );
               })}
               <div className={styles.projectDropdownDivider}></div>
-              <button 
+              <button
                 className={styles.menuItem}
-                role="menuitem"
+
                 disabled={busy}
                 onClick={() => {
                   setProjectMenuOpen(false);
@@ -171,8 +193,8 @@ export default function Header({ workspace: w }: HeaderProps) {
 
       <div className={styles.actions}>
         {w.saveError && (
-          <button 
-            title={w.saveError} 
+          <button
+            title={w.saveError}
             className={`${styles.errorPill} ${w.conflict ? styles.clickableErrorPill : styles.staticErrorPill}`}
             onClick={() => setMenuOpen(true)}
           >
@@ -180,42 +202,49 @@ export default function Header({ workspace: w }: HeaderProps) {
             <span>{w.conflict ? "Dự án đã thay đổi ở nơi khác" : "Lỗi đồng bộ"}</span>
           </button>
         )}
-        
-        <span className={styles.saveStatus}>
-          {w.isUploading ? "Đang lưu ảnh…" : w.saveState}
-        </span>
+
+        <span className={styles.saveStatus}>{w.isUploading ? "Đang lưu ảnh…" : w.saveState}</span>
 
         {/* manual Save */}
-        <button className="button button-secondary" onClick={() => void w.saveProject()} disabled={busy || w.conflict} title="Lưu dự án hiện tại">
+        <button
+          className="button button-secondary"
+          onClick={() => void w.saveProject()}
+          disabled={busy || w.conflict}
+          title="Lưu thủ công (Hệ thống luôn tự động lưu)"
+        >
           <Save size={15} /> <span>Lưu</span>
         </button>
 
         <div className={styles.moreMenuWrapper} ref={menuRef}>
-          <button 
-            className="button button-text" 
+          <button
+            ref={menuTriggerRef}
+            className="button button-text"
             onClick={() => setMenuOpen(!menuOpen)}
-            aria-haspopup="menu"
+            aria-haspopup="true"
             aria-expanded={menuOpen}
             title="Tùy chọn khác"
           >
             <MoreHorizontal size={18} />
           </button>
-          
+
           {w.isExporting && exportLabel && !menuOpen && (
-             <div className={styles.exportFloatingStatus}>
-               <div className={styles.exportProgress}>{exportLabel}</div>
-             </div>
+            <div className={styles.exportFloatingStatus}>
+              <div className={styles.exportProgress}>{exportLabel}</div>
+            </div>
           )}
 
           {menuOpen && (
-            <div className={styles.menuDropdown} role="menu">
+            <div className={styles.menuDropdown}>
               <button
                 className={styles.menuItem}
-                role="menuitem"
+
                 disabled={busy || w.isExporting || !hasData}
-                onClick={() => { setMenuOpen(false); void w.exportProject(); }}
+                onClick={() => {
+                  setMenuOpen(false);
+                  void w.exportProject();
+                }}
               >
-                <Archive size={15}/> 
+                <Archive size={15} />
                 <span>{w.isExporting ? "Đang đóng gói…" : "Xuất dự án ZIP"}</span>
               </button>
 
@@ -223,41 +252,54 @@ export default function Header({ workspace: w }: HeaderProps) {
                 <>
                   <button
                     className={styles.menuItem}
-                    role="menuitem"
+
                     disabled={busy}
-                    onClick={() => { setMenuOpen(false); void w.reloadProject(); }}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      void w.reloadProject();
+                    }}
                   >
                     <RefreshCw size={15} />
                     <span>Mở bản máy chủ</span>
                   </button>
                   <button
                     className={styles.menuItem}
-                    role="menuitem"
+
                     disabled={busy}
-                    onClick={() => { setMenuOpen(false); void w.saveCopy(); }}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      void w.saveCopy();
+                    }}
                   >
                     <Copy size={15} />
                     <span>Lưu thành bản sao</span>
                   </button>
                 </>
               )}
-              
+
               <div className={styles.projectDropdownDivider}></div>
 
-              <button 
-                className={`${styles.menuItem} ${styles.danger}`} 
-                role="menuitem"
+              <button
+                className={`${styles.menuItem} ${styles.danger}`}
+
                 disabled={busy || !w.projectId}
-                onClick={() => { setMenuOpen(false); void w.deleteCurrentProject(); }}
+                onClick={() => {
+                  setMenuOpen(false);
+                  void w.deleteCurrentProject();
+                }}
               >
                 <Trash2 size={15} />
                 <span>Xóa dự án</span>
               </button>
 
-              <button 
+              <button
                 className={styles.menuItem}
-                role="menuitem"
-                onClick={() => { setMenuOpen(false); setAccessToken(""); window.location.reload(); }}
+
+                onClick={() => {
+                  setMenuOpen(false);
+                  setAccessToken("");
+                  window.location.reload();
+                }}
               >
                 <LogOut size={15} />
                 <span>Đăng xuất</span>

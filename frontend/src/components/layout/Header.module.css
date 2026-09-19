@@ -1,4 +1,3 @@
-
 .header {
   display: flex;
   align-items: center;
@@ -88,7 +87,7 @@
   color: var(--danger);
   font-size: 0.85rem;
   font-weight: 500;
-  background: var(--danger-alpha, rgba(239,68,68,0.1));
+  background: var(--danger-alpha, rgba(239, 68, 68, 0.1));
   padding: 4px 8px;
   border-radius: 6px;
 }
@@ -119,7 +118,7 @@
   display: flex;
   flex-direction: column;
   min-width: 180px;
-  box-shadow: 0 4px 13px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 13px rgba(0, 0, 0, 0.2);
   z-index: 100;
 }
 
@@ -163,26 +162,129 @@
   padding: 0 8px;
 }
 
-.brand { display: flex; align-items: center; gap: 11px; min-width: 192px; }
-.brandMark { width: 36px; height: 40px; display: flex; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 11px; color: var(--accent); background: var(--accent-soft); }
-.brandName { font-size: 18px; font-weight: 650; letter-spacing: -0.6px; line-height: 1.2; }
-.brandName > span { display: block; font-size: 9px; font-weight: 500; letter-spacing: 0.23em; color: var(--muted); margin-top: 4px; }
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 192px;
+}
+.brandMark {
+  width: 36px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 11px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.brandName {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.6px;
+  line-height: 1.2;
+}
+.brandName > span {
+  display: block;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.23em;
+  color: var(--muted);
+  margin-top: 4px;
+}
 
-.projectDropdown { position: absolute; top: calc(100% + 8px); left: 0; background: var(--surface-3); border: 1px solid var(--border); border-radius: 8px; padding: 4px; display: flex; flex-direction: column; min-width: 250px; box-shadow: 0 4px 13px rgba(0,0,0,0.2); z-index: 100; }
-.projectDropdownDivider { height: 1px; background: var(--border); margin: 4px 0; }
-.projectDropdownButton { width: 36px; height: 100%; display: flex; align-items: center; justify-content: center; background: transparent; border: none; cursor: pointer; color: var(--muted); }
-.projectDropdownButton:hover { color: var(--foreground); }
-.confirmNameButton { margin-left: 4px; width: 26px; height: 26px; border: none; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--success); }
-.confirmNameButton:hover { opacity: 0.8; }
-.chevronIcon { transition: transform 0.2s ease; }
-.menuOpen .chevronIcon { transform: rotate(180deg); }
-.menuCheckVisible { visibility: visible; flex-shrink: 0; }
-.menuCheckHidden { visibility: hidden; flex-shrink: 0; }
-.activeProjectName { font-weight: 600; color: var(--foreground); }
-.projectNameText { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-.menuItemActive { background: var(--surface-2); }
+.projectDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  min-width: 250px;
+  box-shadow: 0 4px 13px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+}
+.projectDropdownDivider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+.projectDropdownButton {
+  width: 36px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+}
+.projectDropdownButton:hover {
+  color: var(--foreground);
+}
+.confirmNameButton {
+  margin-left: 4px;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--success);
+}
+.confirmNameButton:hover {
+  opacity: 0.8;
+}
+.chevronIcon {
+  transition: transform 0.2s ease;
+}
+.menuOpen .chevronIcon {
+  transform: rotate(180deg);
+}
+.menuCheckVisible {
+  visibility: visible;
+  flex-shrink: 0;
+}
+.menuCheckHidden {
+  visibility: hidden;
+  flex-shrink: 0;
+}
+.activeProjectName {
+  font-weight: 600;
+  color: var(--foreground);
+}
+.projectNameText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+.menuItemActive {
+  background: var(--surface-2);
+}
 
-.clickableErrorPill { cursor: pointer; border: none; }
-.staticErrorPill { cursor: default; border: none; }
-.exportFloatingStatus { position: absolute; top: 100%; right: 0; width: max-content; }
-.projectDropdown { max-height: 400px; overflow-y: auto; }
+.clickableErrorPill {
+  cursor: pointer;
+  border: none;
+}
+.staticErrorPill {
+  cursor: default;
+  border: none;
+}
+.exportFloatingStatus {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: max-content;
+}
+.projectDropdown {
+  max-height: 400px;
+  overflow-y: auto;
+}
