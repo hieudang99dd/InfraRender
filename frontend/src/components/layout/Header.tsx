@@ -1,4 +1,4 @@
-import { Box, LogOut, FilePlus, Save, Trash2, Archive, ChevronDown, AlertCircle, MoreHorizontal, RefreshCw, Copy } from "lucide-react";
+import { Box, LogOut, FilePlus, Save, Trash2, Archive, ChevronDown, AlertCircle, MoreHorizontal, RefreshCw, Copy, Check } from "lucide-react";
 import type { useWorkspace } from "@/hooks/useWorkspace";
 import { setAccessToken } from "@/lib/api";
 import { useState, useRef, useEffect } from "react";
@@ -13,6 +13,21 @@ export default function Header({ workspace: w }: HeaderProps) {
   const hasData = Boolean(w.source || w.renderVersions.length > 0 || w.prompt.trim());
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const [localName, setLocalName] = useState(w.projectName);
+  const [isEditingName, setIsEditingName] = useState(false);
+
+  useEffect(() => {
+    if (!isEditingName) setLocalName(w.projectName);
+  }, [w.projectName, isEditingName]);
+
+  const commitName = () => {
+    const finalName = localName.trim() || "Dự án chưa đặt tên";
+    if (finalName !== w.projectName) {
+      w.setProjectName(finalName);
+    }
+    setIsEditingName(false);
+  };
 
   const exportLabel = w.exportProgress
     ? w.exportProgress.stage === "packing"
@@ -54,16 +69,41 @@ export default function Header({ workspace: w }: HeaderProps) {
         </a>
 
         <div className={styles.projectSelector}>
-          <input
-            className={styles.projectInput}
-            value={w.projectName}
-            maxLength={70}
-            disabled={busy}
-            onChange={(event) => w.setProjectName(event.target.value)}
-            onBlur={() => { if (!w.projectName.trim()) w.setProjectName("Dự án chưa đặt tên"); }}
-            placeholder="Tên dự án..."
-            title="Bấm để đổi tên dự án"
-          />
+          <div className={styles.projectNameField}>
+            <input
+              className={styles.projectInput}
+              value={isEditingName ? localName : w.projectName}
+              maxLength={70}
+              disabled={busy}
+              onChange={(event) => {
+                setIsEditingName(true);
+                setLocalName(event.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  commitName();
+                  e.currentTarget.blur();
+                } else if (e.key === "Escape") {
+                  setIsEditingName(false);
+                  setLocalName(w.projectName);
+                  e.currentTarget.blur();
+                }
+              }}
+              placeholder="Tên dự án..."
+              title="Bấm để đổi tên dự án"
+            />
+            {isEditingName && (
+              <button 
+                type="button"
+                className="icon-button" 
+                style={{ marginLeft: '4px', width: '26px', height: '26px', border: 'none', background: 'transparent' }}
+                onClick={commitName}
+                title="Đồng ý"
+              >
+                <Check size={16} color="var(--success)" />
+              </button>
+            )}
+          </div>
           
           <div className={styles.divider}></div>
           

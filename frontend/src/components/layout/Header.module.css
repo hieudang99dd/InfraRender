@@ -42,6 +42,13 @@
   height: 100%;
 }
 
+.projectNameField {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  position: relative;
+}
+
 .divider {
   width: 1px;
   height: 20px;
