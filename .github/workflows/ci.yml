@@ -181,7 +181,7 @@ jobs:
           echo "Testing HTTPS /api/health through Caddy..."
           api_ok=0
           for attempt in {1..30}; do
-            if curl -k --fail --silent --show-error https://localhost:8443/api/health > /tmp/caddy-health.json; then
+            if curl --resolve localhost:8443:127.0.0.1 -k --fail --silent --show-error --max-time 15 https://localhost:8443/api/health > /tmp/caddy-health.json; then
               if jq -e '.status == "ok" and .service == "InfraRender AI Backend"' /tmp/caddy-health.json > /dev/null; then
                 api_ok=1
                 break
@@ -193,28 +193,28 @@ jobs:
           if [ "$api_ok" -eq 0 ]; then
             echo "Self-host API routing through Caddy failed"
             docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml ps
-            docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml logs --no-color caddy
+            docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml logs --no-color caddy backend frontend
             exit 1
           fi
 
           echo "Testing static frontend through Caddy..."
-          if ! curl -k --fail --silent --show-error https://localhost:8443/ | grep -q "InfraRender"; then
+          if ! curl --resolve localhost:8443:127.0.0.1 -k --fail --silent --show-error --max-time 15 https://localhost:8443/ | grep -q "InfraRender"; then
             echo "Frontend page through Caddy missing InfraRender content"
-            docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml logs --no-color caddy
+            docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml logs --no-color caddy backend frontend
             exit 1
           fi
 
           echo "Testing /uploads routing reaches the backend (404 JSON, not SPA fallback)..."
-          code="$(curl -k --silent -o /tmp/media-404.json -w '%{http_code}' https://localhost:8443/uploads/00000000000000000000000000000000.png)"
+          code="$(curl --resolve localhost:8443:127.0.0.1 -k --silent --max-time 15 -o /tmp/media-404.json -w '%{http_code}' https://localhost:8443/uploads/00000000000000000000000000000000.png)"
           if [ "$code" != "404" ] || ! grep -q '"detail"' /tmp/media-404.json; then
             echo "Unexpected /uploads response: HTTP $code $(cat /tmp/media-404.json)"
-            docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml logs --no-color caddy
+            docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml logs --no-color caddy backend frontend
             exit 1
           fi
 
           echo "Testing upload -> /uploads download round trip through Caddy..."
           python3 -c 'import base64; open("/tmp/pixel.png", "wb").write(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="))'
-          curl -k --fail --silent --show-error \
+          curl --resolve localhost:8443:127.0.0.1 -k --fail --silent --show-error --max-time 30 \
             -F "file=@/tmp/pixel.png;type=image/png" \
             https://localhost:8443/api/upload-image > /tmp/upload.json
           if ! jq -e '.status == "success"' /tmp/upload.json > /dev/null; then
@@ -222,7 +222,7 @@ jobs:
             exit 1
           fi
           name="$(jq -r '.saved_name' /tmp/upload.json)"
-          curl -k --fail --silent --show-error "https://localhost:8443/uploads/$name" -o /tmp/downloaded.png
+          curl --resolve localhost:8443:127.0.0.1 -k --fail --silent --show-error --max-time 15 "https://localhost:8443/uploads/$name" -o /tmp/downloaded.png
           if ! cmp -s /tmp/pixel.png /tmp/downloaded.png; then
             echo "Downloaded media differs from uploaded bytes"
             exit 1
