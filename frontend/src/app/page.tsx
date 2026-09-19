@@ -8,12 +8,14 @@ import PromptDock from "@/components/prompt/PromptDock";
 import OutputHistory from "@/components/output/OutputHistory";
 import RenderResult from "@/components/output/RenderResult";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useRenderService } from "@/hooks/useRenderService";
 import LoginScreen from "@/components/layout/LoginScreen";
 import { useEffect, useState } from "react";
 import { apiRequest, getAccessToken, getBackendUrl } from "@/lib/api";
 
 export default function Home() {
   const workspace = useWorkspace();
+  const renderService = useRenderService();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
@@ -25,7 +27,7 @@ export default function Home() {
         return;
       }
       try {
-        await apiRequest("/api/health");
+        await apiRequest("/api/auth/check");
         setIsAuthenticated(true);
       } catch {
         setIsAuthenticated(false);
@@ -38,7 +40,7 @@ export default function Home() {
 
   if (!isAuthenticated) {
     return <LoginScreen onLoginSuccess={() => {
-      try { localStorage.removeItem(`infrarender.workspace.v2:${getBackendUrl()}`); } catch {}
+      // Do not clear the workspace draft; let useProjectPersistence reconcile it.
       window.location.reload();
     }} isChecking={isCheckingAuth} />;
   }
@@ -145,7 +147,7 @@ export default function Home() {
             isGenerating={workspace.isGenerating}
             isRendering={workspace.isRendering}
             canGenerate={Boolean(workspace.source && "saved_name" in workspace.source) && !workspace.isUploading}
-            canRender={Boolean(workspace.source && "saved_name" in workspace.source) && !workspace.isUploading && Boolean(workspace.prompt.trim())}
+            canRender={Boolean(workspace.source && "saved_name" in workspace.source) && !workspace.isUploading && Boolean(workspace.prompt.trim()) && Boolean(renderService.service?.configured)}
             onGenerate={workspace.generatePrompt}
             onRender={workspace.renderImage}
           />

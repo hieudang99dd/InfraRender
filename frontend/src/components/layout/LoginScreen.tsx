@@ -49,7 +49,7 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
 
     try {
       const { apiRequest } = await import("@/lib/api");
-      await apiRequest("/api/health");
+      await apiRequest("/api/auth/check");
       onLoginSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Tài khoản hoặc mật khẩu không đúng.");

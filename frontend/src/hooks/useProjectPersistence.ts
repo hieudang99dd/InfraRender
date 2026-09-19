@@ -145,7 +145,10 @@ export function useProjectPersistence(data: WorkspaceState, setData: Dispatch<Se
 
   useEffect(()=>{
     function beforeUnload(event:BeforeUnloadEvent) {
-      if(busy.current || JSON.stringify(current.current)!==synced.current && current.current.prompt!=="") { event.preventDefault(); }
+      const isDirty = JSON.stringify(current.current) !== synced.current;
+      if (busy.current || isDirty) { 
+        event.preventDefault(); 
+      }
     }
     const retry=()=>{void refreshProjects().catch(()=>undefined);void saveProject();};
     window.addEventListener("beforeunload",beforeUnload);

@@ -123,6 +123,11 @@ def health():
     return JSONResponse(body, status_code=200 if ready else 503)
 
 
+@app.get("/api/auth/check")
+def auth_check():
+    return {"status": "ok", "authenticated": True}
+
+
 @app.get("/api/render-status")
 def get_render_status():
     return render_status()

@@ -1,4 +1,4 @@
-import { Box, LogOut, FilePlus, Save, Trash2, Archive, ChevronDown, AlertCircle, MoreHorizontal } from "lucide-react";
+import { Box, LogOut, FilePlus, Save, Trash2, Archive, ChevronDown, AlertCircle, MoreHorizontal, RefreshCw, Copy } from "lucide-react";
 import type { useWorkspace } from "@/hooks/useWorkspace";
 import { setAccessToken } from "@/lib/api";
 import { useState, useRef, useEffect } from "react";
@@ -131,6 +131,29 @@ export default function Header({ workspace: w }: HeaderProps) {
                 <Archive size={15}/> 
                 <span>{w.isExporting ? "Đang đóng gói…" : "Xuất dự án ZIP"}</span>
               </button>
+
+              {w.conflict && w.projectId && (
+                <>
+                  <button
+                    className={styles.menuItem}
+                    role="menuitem"
+                    disabled={busy}
+                    onClick={() => { setMenuOpen(false); void w.reloadProject(); }}
+                  >
+                    <RefreshCw size={15} />
+                    <span>Mở bản máy chủ</span>
+                  </button>
+                  <button
+                    className={styles.menuItem}
+                    role="menuitem"
+                    disabled={busy}
+                    onClick={() => { setMenuOpen(false); void w.saveCopy(); }}
+                  >
+                    <Copy size={15} />
+                    <span>Lưu thành bản sao</span>
+                  </button>
+                </>
+              )}
               
               <button 
                 className={`${styles.menuItem} ${styles.danger}`} 

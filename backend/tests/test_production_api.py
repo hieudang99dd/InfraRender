@@ -42,9 +42,24 @@ class ProductionApiTests(unittest.TestCase):
         with patch.dict(os.environ, {"INFRARENDER_AUTH_PASS": "test-access-token"}):
             import base64
             auth = "Basic " + base64.b64encode(b"hieu.dv:test-access-token").decode()
+            wrong_auth = "Basic " + base64.b64encode(b"hieu.dv:wrong").decode()
+            
+            # Health is public
             self.assertEqual(self.client.get("/api/health").status_code, 200)
+            
+            # Generate prompt is protected
             self.assertEqual(self.client.post("/api/generate-prompt", json={}).status_code, 401)
             self.assertEqual(self.client.post("/api/generate-prompt", json={}, headers={"Authorization": auth}).status_code, 200)
+            
+            # Auth check endpoint
+            self.assertEqual(self.client.get("/api/auth/check").status_code, 401)
+            self.assertEqual(self.client.get("/api/auth/check", headers={"Authorization": wrong_auth}).status_code, 401)
+            self.assertEqual(self.client.get("/api/auth/check", headers={"Authorization": "Bearer invalid"}).status_code, 401)
+            
+            auth_response = self.client.get("/api/auth/check", headers={"Authorization": auth})
+            self.assertEqual(auth_response.status_code, 200)
+            self.assertTrue(auth_response.json()["authenticated"])
+
 
     def test_health_does_not_equate_configuration_to_render_success(self):
         with patch.object(main, "render_status", return_value={"configured": True, "state": "unverified", "provider": "OpenAI", "message": "Unverified"}):
@@ -80,15 +95,15 @@ class ProjectApiTests(unittest.TestCase):
         self.assertEqual(upload.status_code, 200, upload.text)
         uploaded = upload.json()
         snapshot = {
-            "schemaVersion": 1, "projectName": "Cầu thÃ nh phá»‘", "promptMode": "vision",
+            "schemaVersion": 1, "projectName": "Cầu thành phố", "promptMode": "vision",
             "source": {"saved_name": uploaded["saved_name"], "url": uploaded["url"],
-                       "name": "cau.png", "size": "0.01 MB", "resolution": "8 Ã— 6"},
-            "prompt": "Giá»¯ nguyÃªn hÃ¬nh há»c cáº§u", "notes": "Buá»•i chiá»u",
+                       "name": "cau.png", "size": "0.01 MB", "resolution": "8 × 6"},
+            "prompt": "Giữ nguyên hình học cầu", "notes": "Buổi chiều",
             "settings": {"quality": "4K", "aspectRatio": "16:9"},
-            "promptAnalysis": ["Má»™t tuyáº¿n Ä‘Æ°á»ng qua cáº§u"], "promptModel": "test-vision",
+            "promptAnalysis": ["Một tuyến đường qua cầu"], "promptModel": "test-vision",
             "versions": [], "renderVersions": [], "activeRenderId": None,
         }
-        created = self.client.post("/api/projects", json={"name": "Cầu thÃ nh phá»‘", "workspace": snapshot})
+        created = self.client.post("/api/projects", json={"name": "Cầu thành phố", "workspace": snapshot})
         self.assertEqual(created.status_code, 201, created.text)
         project = created.json()
         url = f"/api/projects/{project['id']}"
@@ -98,12 +113,12 @@ class ProjectApiTests(unittest.TestCase):
 
         media_url = f"/api/files/uploads/{uploaded['saved_name']}"
         self.assertEqual(self.client.delete(media_url).status_code, 409)
-        update = {"name": "Cầu má»›i", "workspace": {**snapshot, "notes": "Buá»•i sÃ¡ng"}, "revision": 1}
+        update = {"name": "Cầu mới", "workspace": {**snapshot, "notes": "Buổi sáng"}, "revision": 1}
         saved = self.client.put(url, json=update)
         self.assertEqual(saved.status_code, 200, saved.text)
         self.assertEqual(saved.json()["revision"], 2)
         self.assertEqual(self.client.put(url, json=update).status_code, 409)
-        self.assertEqual(self.client.get(url).json()["workspace"]["notes"], "Buá»•i sÃ¡ng")
+        self.assertEqual(self.client.get(url).json()["workspace"]["notes"], "Buổi sáng")
         self.assertEqual(self.client.delete(url).status_code, 200)
         self.assertEqual(self.client.get(url).status_code, 404)
         self.assertFalse((self.uploads / uploaded["saved_name"]).exists())
