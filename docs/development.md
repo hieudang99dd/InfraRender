@@ -1,4 +1,4 @@
-﻿# Phát triển InfraRenderAI
+# Phát triển InfraRenderAI
 
 ## Môi trường và cài đặt
 
@@ -19,7 +19,7 @@ Copy-Item backend/.env.example backend/.env
 Copy-Item frontend/.env.example frontend/.env.local
 ```
 
-Backend đọc `backend/.env`. Frontend đọc `.env.local` trong `frontend/`. Chỉ URL backend là biến public; khóa provider và token truy cập không được đóng vào bundle frontend.
+Backend đọc `backend/.env`. Frontend đọc `.env.local` trong `frontend/`. Chỉ URL backend là biến public; khóa provider và mật khẩu truy cập không được đóng vào bundle frontend.
 
 ## Chạy local
 
@@ -91,7 +91,7 @@ Khi đổi máy, Git không mang theo `.env`, ảnh và SQLite. Sao lưu dữ li
 | ------------------------------ | -------------------------------------------------------------------------- |
 | Frontend mở nhưng API lỗi      | URL backend, health, CORS đúng origin/cổng                                 |
 | Health xanh nhưng không render | Cấu hình renderer, quyền model, key/hạn mức                                |
-| `401`                          | Mã truy cập ứng dụng, không dùng provider key làm token frontend           |
+| `401`                          | Tài khoản/mật khẩu ứng dụng sai, không dùng provider key làm thông tin đăng nhập frontend |
 | Lưu dự án trả `409`            | Revision cũ hoặc ảnh đã mất; giữ bản nháp, mở bản máy chủ hoặc tải lại ảnh |
 | Ảnh trả `404`                  | Volume/thư mục dữ liệu và tên file                                         |
 | Build Pages từ chối            | URL backend HTTPS hợp lệ và `INFRARENDER_PAGES=true`                       |

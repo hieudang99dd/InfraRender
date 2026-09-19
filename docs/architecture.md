@@ -1,4 +1,4 @@
-﻿# Kiến trúc InfraRenderAI
+# Kiến trúc InfraRenderAI
 
 ## Các thành phần
 
@@ -70,7 +70,7 @@ Khi lưu, backend kiểm tra ảnh được tham chiếu còn tồn tại. Khi x
 
 ## Ranh giới bảo mật và trạng thái
 
-Provider key chỉ có ở backend. `INFRARENDER_ACCESS_TOKEN` bảo vệ API thao tác bằng Bearer token; production yêu cầu token ít nhất 32 ký tự, public URL HTTPS và CORS cụ thể. Đây là khóa cho nhóm dùng chung, chưa có phân quyền theo tài khoản.
+Provider key chỉ có ở backend. `INFRARENDER_AUTH_PASS` bảo vệ API thao tác bằng Basic auth; production yêu cầu password ít nhất 12 ký tự, public URL HTTPS và CORS cụ thể. Đây là khóa cho nhóm dùng chung, chưa có phân quyền theo người dùng (ngoài `INFRARENDER_AUTH_USER`).
 
 Health và trạng thái cấu hình được đọc công khai. `/uploads/...` và `/outputs/...` cũng là URL công khai có tên khó đoán; người biết URL có thể đọc ảnh. Không dùng bản triển khai này để cung cấp kho ảnh riêng tư theo tài khoản.
 

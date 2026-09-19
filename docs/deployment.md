@@ -1,4 +1,4 @@
-﻿# Triển khai InfraRenderAI
+# Triển khai InfraRenderAI
 
 ## Trạng thái và kiến trúc
 
@@ -23,7 +23,8 @@ Cấu hình runtime:
 | Biến                          | Giá trị / ý nghĩa                                                  |
 | ----------------------------- | ------------------------------------------------------------------ |
 | `INFRARENDER_ENV`             | `production`                                                       |
-| `INFRARENDER_ACCESS_TOKEN`    | Token ngẫu nhiên ít nhất 32 ký tự, cấp riêng cho nhóm tin cậy      |
+| `INFRARENDER_AUTH_USER`       | Tài khoản truy cập, mặc định `hieu.dv`                             |
+| `INFRARENDER_AUTH_PASS`       | Mật khẩu ít nhất 12 ký tự, cấp riêng cho nhóm tin cậy              |
 | `INFRARENDER_PUBLIC_BASE_URL` | URL HTTPS thật của backend, gồm prefix proxy nếu có                |
 | `INFRARENDER_CORS_ORIGINS`    | `https://hieudang99dd.github.io` — origin không gồm `/InfraRender` |
 | `INFRARENDER_DATA_DIR`        | Thư mục trên volume bền vững, Docker dùng `/data`                  |
@@ -36,7 +37,7 @@ Cấu hình runtime:
 
 `OPENAI_VISION_MODEL` còn được đọc như tên model prompt tương thích cũ nếu chưa đặt `OPENAI_PROMPT_MODEL`. Không cần đặt cả hai. Provider thay thế phải hỗ trợ định dạng endpoints image edit, kiểm tra model, chat completion và JSON schema mà adapter đang dùng; không mặc định mọi API tương thích đều hoạt động.
 
-Backend từ chối startup production nếu token quá ngắn, thiếu public HTTPS URL hoặc CORS rỗng/wildcard. Host phải cấu hình origin production đúng; CORS không thay thế xác thực.
+Backend từ chối startup production nếu password quá ngắn, thiếu public HTTPS URL hoặc CORS rỗng/wildcard. Host phải cấu hình origin production đúng; CORS không thay thế xác thực.
 
 ### Docker
 

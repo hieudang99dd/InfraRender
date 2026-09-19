@@ -1,10 +1,10 @@
-﻿# API InfraRenderAI
+# API InfraRenderAI
 
 Nguồn hợp đồng: `backend/main.py`, `backend/schemas.py`, `backend/services/project_store.py`. Frontend gọi trực tiếp backend; `/api` không phải proxy trên GitHub Pages.
 
 ## Xác thực và dữ liệu chung
 
-Khi `INFRARENDER_ACCESS_TOKEN` được cấu hình, các endpoint thao tác bên dưới yêu cầu `Authorization: Bearer <application-access-token>`. Đây là token ứng dụng do chủ máy chủ cấp, không phải OpenAI key. Production yêu cầu token ít nhất 32 ký tự.
+Khi `INFRARENDER_AUTH_PASS` được cấu hình, các endpoint thao tác bên dưới yêu cầu `Authorization: Basic <base64(user:pass)>`. Đây là password ứng dụng do chủ máy chủ cấp, không phải OpenAI key. Production yêu cầu password ít nhất 12 ký tự. (Bạn có thể dùng tài khoản `INFRARENDER_AUTH_USER`).
 
 Không yêu cầu token: `GET /`, `GET /health`, `GET /api/health`, `GET /api/render-status`, preflight `OPTIONS`, và đọc media tại `/uploads/{filename}`, `/outputs/{filename}`. URL media được đọc công khai bởi người biết URL. API dự án dùng chung cho nhóm tin cậy, chưa có quyền sở hữu theo tài khoản.
 
