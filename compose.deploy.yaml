@@ -16,7 +16,7 @@ services:
       INFRARENDER_AUTH_USER: hieu.dv
       INFRARENDER_AUTH_PASS_FILE: /run/secrets/infrarender_auth_pass
       INFRARENDER_CORS_ORIGINS: https://${INFRARENDER_DOMAIN}
-      INFRARENDER_PUBLIC_BASE_URL: "https://${INFRARENDER_DOMAIN:-}"
+      INFRARENDER_PUBLIC_BASE_URL: "https://${INFRARENDER_DOMAIN:?Set INFRARENDER_DOMAIN in the server .env file}"
     expose:
       - "8000"
     volumes:
@@ -76,11 +76,14 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
+      # wget is available in nginx:alpine; node is NOT present in the runner image.
       test:
         - CMD
-        - node
-        - -e
-        - "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+        - wget
+        - -q
+        - -O
+        - /dev/null
+        - http://127.0.0.1:3000/
       interval: 30s
       timeout: 5s
       retries: 3

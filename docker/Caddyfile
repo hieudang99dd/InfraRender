@@ -11,12 +11,6 @@
 }
 
 {$INFRARENDER_DOMAIN} {
-    @protected not path /api/health
-
-    basic_auth @protected {
-        {$INFRARENDER_BASIC_AUTH_USER} {$INFRARENDER_BASIC_AUTH_HASH}
-    }
-
     encode zstd gzip
 
     request_body {
@@ -37,5 +31,24 @@
         format json
     }
 
-    reverse_proxy frontend:3000
+    # Backend routes: API, uploaded images, and render outputs go directly to FastAPI.
+    # /api/health is deliberately public (no auth required at Caddy level).
+    # All other /api/* paths and media paths are protected by the backend's own
+    # Basic auth middleware — Caddy does not add a second auth layer here.
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+
+    handle /uploads/* {
+        reverse_proxy backend:8000
+    }
+
+    handle /outputs/* {
+        reverse_proxy backend:8000
+    }
+
+    # Everything else is the static frontend (Next.js export served by nginx).
+    handle {
+        reverse_proxy frontend:3000
+    }
 }

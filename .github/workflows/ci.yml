@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 on:
   workflow_dispatch:
@@ -77,13 +77,17 @@ jobs:
           docker compose -f compose.yaml -f compose.local.yaml config
           mkdir -p secrets
           printf '%s' 'ci-placeholder-key' > secrets/openai_api_key.txt
-          INFRARENDER_DOMAIN=render.example.com INFRARENDER_BASIC_AUTH_USER=ci INFRARENDER_BASIC_AUTH_HASH=ci-placeholder docker compose -f compose.yaml -f compose.production.yaml config
-          INFRARENDER_DOMAIN=render.example.com INFRARENDER_BASIC_AUTH_USER=ci INFRARENDER_BASIC_AUTH_HASH=ci-placeholder docker compose -f compose.deploy.yaml config
+          printf '%s' 'ci-placeholder-pass-at-least-12-chars' > secrets/infrarender_auth_pass.txt
+          INFRARENDER_DOMAIN=render.example.com docker compose -f compose.yaml -f compose.production.yaml config
+          INFRARENDER_DOMAIN=render.example.com docker compose -f compose.deploy.yaml config
 
       - name: Validate Caddy configuration
         run: |
-          AUTH_HASH="$(docker run --rm caddy:2.11.4-alpine caddy hash-password --plaintext ci-password)"
-          docker run --rm -e INFRARENDER_DOMAIN=render.example.com -e INFRARENDER_BASIC_AUTH_USER=ci -e "INFRARENDER_BASIC_AUTH_HASH=$AUTH_HASH" -v "$PWD/docker/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.11.4-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          # Caddyfile uses only INFRARENDER_DOMAIN; no longer requires BASIC_AUTH vars
+          docker run --rm \
+            -e INFRARENDER_DOMAIN=render.example.com \
+            -v "$PWD/docker/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.11.4-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
       - name: Build Docker images
         run: docker compose -f compose.yaml -f compose.local.yaml build
@@ -123,7 +127,7 @@ jobs:
           for attempt in {1..30}; do
             if curl --fail --silent --show-error http://127.0.0.1:8000/api/health > /tmp/health.json; then
               cat /tmp/health.json
-              if jq -e '.status == "ok"' /tmp/health.json > /dev/null; then
+              if jq -e '.status == "ok" and .service == "InfraRender AI Backend"' /tmp/health.json > /dev/null; then
                 backend_ok=1
                 break
               fi

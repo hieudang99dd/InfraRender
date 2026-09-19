@@ -1,9 +1,22 @@
+# DEPRECATED: This file is superseded by compose.deploy.yaml which uses GHCR images.
+# For production deployments, use:
+#   docker compose -f compose.deploy.yaml up -d
+# For local development, use:
+#   docker compose -f compose.yaml -f compose.local.yaml up -d
+#
+# This file is kept for reference only and is NOT used in CI or ops scripts.
+# It will be removed in a future release.
+
 services:
   backend:
     environment:
       OPENAI_API_KEY: ""
       OPENAI_API_KEY_FILE: /run/secrets/openai_api_key
+      INFRARENDER_DATA_DIR: /data
       INFRARENDER_CORS_ORIGINS: https://${INFRARENDER_DOMAIN}
+    volumes:
+      # Unified data volume (matches compose.deploy.yaml contract)
+      - infrarender_data:/data
     secrets:
       - openai_api_key
     mem_limit: ${BACKEND_MEMORY_LIMIT:-1g}
@@ -16,13 +29,14 @@ services:
   maintenance:
     image: infrarender-backend:local
     environment:
+      INFRARENDER_DATA_DIR: /data
       INFRARENDER_UPLOAD_RETENTION_HOURS: ${INFRARENDER_UPLOAD_RETENTION_HOURS:-168}
       INFRARENDER_OUTPUT_RETENTION_HOURS: ${INFRARENDER_OUTPUT_RETENTION_HOURS:-720}
       INFRARENDER_CLEANUP_INTERVAL_SECONDS: ${INFRARENDER_CLEANUP_INTERVAL_SECONDS:-21600}
       INFRARENDER_LOG_LEVEL: ${INFRARENDER_LOG_LEVEL:-INFO}
     volumes:
-      - infrarender_uploads:/app/uploads
-      - infrarender_outputs:/app/outputs
+      # Use the same unified volume as backend
+      - infrarender_data:/data
     command: ["python", "-m", "services.cleanup_storage", "--loop"]
     restart: unless-stopped
     init: true
@@ -43,8 +57,6 @@ services:
     image: caddy:2.11.4-alpine
     environment:
       INFRARENDER_DOMAIN: ${INFRARENDER_DOMAIN:?Set INFRARENDER_DOMAIN in the server .env file}
-      INFRARENDER_BASIC_AUTH_USER: ${INFRARENDER_BASIC_AUTH_USER:?Set INFRARENDER_BASIC_AUTH_USER in the server .env file}
-      INFRARENDER_BASIC_AUTH_HASH: ${INFRARENDER_BASIC_AUTH_HASH:?Set INFRARENDER_BASIC_AUTH_HASH in the server .env file}
     ports:
       - "80:80"
       - "443:443"
@@ -71,6 +83,8 @@ secrets:
     file: ./secrets/openai_api_key.txt
 
 volumes:
+  infrarender_data:
+    name: infrarender_data
   caddy_data:
     name: infrarender_caddy_data
   caddy_config:
