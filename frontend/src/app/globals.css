@@ -443,7 +443,8 @@ svg {
   background: var(--accent);
 }
 .app-shell {
-  display: block;
+  display: flex;
+  flex-direction: column;
   height: calc(100dvh - 72px);
   min-height: 0;
 }
@@ -461,7 +462,7 @@ svg {
 
 
 .studio {
-  height: 100%;
+  flex: 1;
   padding: 24px 28px 32px;
   overflow-y: auto;
   min-width: 0;
@@ -517,7 +518,7 @@ svg {
   grid-row: 1 / span 3;
   position: sticky;
   top: 0;
-  height: calc(100dvh - 128px);
+  height: calc(100dvh - 136px);
   min-height: 280px;
   overflow: hidden;
   border: 1px solid var(--border);

@@ -112,7 +112,6 @@ export default function Home() {
                 onGenerate={workspace.generatePrompt}
                 onSave={workspace.saveVersion}
                 onClear={workspace.clearPrompt}
-                onRender={workspace.renderImage}
                 isGenerating={workspace.isGenerating}
                 isRendering={workspace.isRendering}
                 canGenerate={Boolean(workspace.source && "saved_name" in workspace.source) && !workspace.isUploading}
@@ -140,19 +139,18 @@ export default function Home() {
             )}
 
           </div>
-          
-          <WorkflowBar
-            hasSource={Boolean(workspace.source)}
-            hasPrompt={Boolean(workspace.prompt.trim())}
-            isGenerating={workspace.isGenerating}
-            isRendering={workspace.isRendering}
-            canGenerate={Boolean(workspace.source && "saved_name" in workspace.source) && !workspace.isUploading}
-            canRender={Boolean(workspace.source && "saved_name" in workspace.source) && !workspace.isUploading && Boolean(workspace.prompt.trim()) && Boolean(renderService.service?.configured)}
-            onGenerate={workspace.generatePrompt}
-            onRender={workspace.renderImage}
-          />
         </main>
-
+        
+        <WorkflowBar
+          hasSource={Boolean(workspace.source)}
+          hasPrompt={Boolean(workspace.prompt.trim())}
+          isGenerating={workspace.isGenerating}
+          isRendering={workspace.isRendering}
+          canGenerate={Boolean(workspace.source && "saved_name" in workspace.source) && !workspace.isUploading}
+          canRender={Boolean(workspace.source && "saved_name" in workspace.source) && !workspace.isUploading && Boolean(workspace.prompt.trim()) && Boolean(renderService.service?.configured)}
+          onGenerate={workspace.generatePrompt}
+          onRender={workspace.renderImage}
+        />
       </div>
       </fieldset>
     </div>

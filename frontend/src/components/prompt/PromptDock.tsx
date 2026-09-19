@@ -11,7 +11,6 @@ import {
   Save,
   Sparkles,
   Trash2,
-  WandSparkles,
   RefreshCw,
 } from "lucide-react";
 import { useRenderService } from "@/hooks/useRenderService";
@@ -31,7 +30,6 @@ type PromptDockProps = {
   onGenerate: () => void;
   onSave: () => void;
   onClear: (mode: "prompt" | "negative") => void;
-  onRender: () => void;
   isGenerating: boolean;
   isRendering: boolean;
   canGenerate: boolean;
@@ -51,7 +49,6 @@ export default function PromptDock({
   onGenerate,
   onSave,
   onClear,
-  onRender,
   isGenerating,
   isRendering,
   canGenerate,
@@ -287,31 +284,6 @@ export default function PromptDock({
               </button>
             )}
           </div>
-          <button
-            type="button"
-            className="button button-primary render-button"
-            onClick={onRender}
-            disabled={
-              !canGenerate ||
-              !prompt.trim() ||
-              isGenerating ||
-              isRendering ||
-              !renderService.service?.configured
-            }
-            title={
-              !canGenerate
-                ? "Thêm ảnh tham chiếu"
-                : !prompt.trim()
-                  ? "Cần có chỉ dẫn trước khi dựng phối cảnh"
-                  : !renderService.service?.configured
-                    ? "Render Engine hiện chưa sẵn sàng"
-                    : undefined
-            }
-            aria-busy={isRendering}
-          >
-            {isRendering ? <LoaderCircle size={17} className="spin" /> : <WandSparkles size={17} />}
-            {isRendering ? "Đang render..." : "Render ảnh"}
-          </button>
         </div>
       </div>
     </section>
