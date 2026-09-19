@@ -1,6 +1,6 @@
 ﻿import assert from "node:assert/strict";
 import { test } from "node:test";
-import { apiRequest, uploadImage, requestRender } from "./api.ts";
+import { apiRequest, getBackendUrl, uploadImage, requestRender } from "./api.ts";
 
 test("API rejects absolute URLs so access tokens cannot leave the backend", async () => {
   await assert.rejects(apiRequest("https://untrusted.example/api/projects"), /đường dẫn API/i);
@@ -128,4 +128,69 @@ test("render configuration failure is readable and does not retry", async (conte
     /Cha cu hAnh d<ch v render/,
   );
   assert.equal(mock.mock.callCount(), 1);
+});
+
+function withBackendUrl(value, fn) {
+  const key = "NEXT_PUBLIC_INFRARENDER_API_URL";
+  const previous = process.env[key];
+  if (value === undefined) delete process.env[key];
+  else process.env[key] = value;
+  try {
+    return fn();
+  } finally {
+    if (previous === undefined) delete process.env[key];
+    else process.env[key] = previous;
+  }
+}
+
+function withWindow(hostname, origin, fn) {
+  const previousWindow = globalThis.window;
+  globalThis.window = { location: { hostname, origin } };
+  try {
+    return fn();
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+}
+
+test("deployment URL: GitHub Pages build uses the configured HTTPS backend", () => {
+  withBackendUrl("https://api.example.test/", () => {
+    assert.equal(getBackendUrl(), "https://api.example.test");
+  });
+});
+
+test("deployment URL: local development without config points at the local backend", () => {
+  withBackendUrl(undefined, () => {
+    const local = withWindow("localhost", "http://localhost:3000", () => getBackendUrl());
+    assert.equal(local, "http://127.0.0.1:8000");
+  });
+});
+
+test("deployment URL: self-hosted build uses the current site origin (same-origin API)", () => {
+  withBackendUrl(undefined, () => {
+    const origin = withWindow("render.example.com", "https://render.example.com", () =>
+      getBackendUrl(),
+    );
+    assert.equal(origin, "https://render.example.com");
+  });
+});
+
+test("deployment URL: without a browser window the local backend fallback is used", () => {
+  withBackendUrl(undefined, () => {
+    assert.equal(getBackendUrl(), "http://127.0.0.1:8000");
+  });
+});
+
+test("deployment URL: access token scope follows the resolved backend URL", () => {
+  withBackendUrl(undefined, () => {
+    assert.equal(
+      withWindow("localhost", "http://localhost:3000", () => getBackendUrl()),
+      "http://127.0.0.1:8000",
+    );
+    assert.equal(
+      withWindow("studio.example.com", "https://studio.example.com", () => getBackendUrl()),
+      "https://studio.example.com",
+    );
+  });
 });

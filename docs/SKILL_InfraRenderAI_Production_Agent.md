@@ -7,7 +7,7 @@ InfraRenderAI từ môi trường local đến production.
 
 Mục tiêu cuối cùng:
 
-- Frontend Next.js chạy ổn định ở production.
+- Frontend Next.js static export được nginx phục vụ ổn định ở production.
 - Backend FastAPI xử lý upload, prompt generation và render.
 - OpenAI API key chỉ tồn tại phía server.
 - Ứng dụng có Docker, healthcheck, persistent storage và CI/CD.
@@ -25,7 +25,7 @@ Internet
 Caddy / HTTPS
    |
    v
-Next.js frontend
+Static frontend (nginx)
    |
    | /api/*
    v
@@ -39,7 +39,9 @@ Persistent storage:
 - outputs
 ```
 
-Frontend và backend giao tiếp trong Docker network.
+Frontend self-host gọi same-origin; nginx/Caddy chuyển `/api/*`, `/uploads/*` và
+`/outputs/*` tới backend. GitHub Pages dùng `NEXT_PUBLIC_INFRARENDER_API_URL` trỏ
+tới backend HTTPS riêng.
 
 Backend không được public trực tiếp ra Internet trong production.
 
@@ -145,7 +147,7 @@ Frontend phải dùng cùng-origin API:
 /api/*
 ```
 
-Next.js server proxy tới FastAPI.
+Browser gọi trực tiếp `/api/*`; không có Next.js server proxy.
 
 Exit criteria:
 
@@ -162,30 +164,18 @@ phải pass.
 
 ## 6. Phase 3 — Frontend Production
 
-Kiến trúc chuẩn hiện tại là Next.js standalone server.
-
-```ts
-const nextConfig = {
-  output: "standalone",
-};
-```
-
-Không dùng Static Export cho production chính nếu ứng dụng còn sử dụng Next.js API proxy.
-
-Frontend container phải dùng multi-stage build.
-
-Production frontend phải gọi backend nội bộ bằng:
+Frontend production là static export, build bằng multi-stage Dockerfile và phục vụ
+bằng nginx non-root với config do repository quản lý. Self-host dùng same-origin;
+nginx/Caddy route tới `backend:8000`. GitHub Pages bắt buộc cấu hình:
 
 ```text
-INFRARENDER_API_URL=http://backend:8000
+NEXT_PUBLIC_INFRARENDER_API_URL=https://backend.example.com
 ```
-
-Không dùng `localhost` để frontend container gọi backend container.
 
 Exit criteria:
 
-- Next.js production build pass.
-- Standalone image build pass.
+- Static export build pass.
+- Nginx image chạy non-root và healthcheck pass.
 - Container frontend khởi động thành công.
 
 ---
@@ -228,17 +218,16 @@ compose.yaml
 compose.local.yaml
 ```
 
-Production build-from-source:
-
-```text
-compose.yaml
-compose.production.yaml
-```
-
-Production registry deployment:
+Production registry deployment (canonical self-host; Caddy + GHCR images):
 
 ```text
 compose.deploy.yaml
+```
+
+CI integration routing test (localhost Caddy, internal CA):
+
+```text
+compose.yaml + compose.local.yaml + compose.test.yaml
 ```
 
 Backend không publish port 8000 trong production.
@@ -249,18 +238,18 @@ Frontend không cần public trực tiếp khi có reverse proxy.
 
 ## 9. Phase 6 — Persistent Storage
 
-Phải dùng named volumes cho:
+Production dùng một named volume thống nhất cho:
 
 ```text
-/app/uploads
-/app/outputs
+/data/projects.sqlite3
+/data/uploads
+/data/outputs
 ```
 
 Ví dụ:
 
 ```text
-infrarender_uploads
-infrarender_outputs
+infrarender_data
 ```
 
 Không dùng dữ liệu quan trọng chỉ nằm trong writable layer của container.
@@ -448,11 +437,14 @@ Bắt buộc xem xét trước khi public rộng rãi:
 
 ## 16. Phase 13 — Backup
 
-Tối thiểu phải có chiến lược backup cho:
+Backup phải chụp cùng một thời điểm cho:
 
 ```text
-infrarender_uploads
-infrarender_outputs
+infrarender_data (projects.sqlite3 + uploads/ + outputs/)
+
+`ops/backup.sh` dừng các container đang ghi volume, tạo archive và checksum;
+trap luôn cố khởi động lại writer. `ops/restore.sh` yêu cầu checksum manifest,
+chặn volume đang được dùng và xác nhận phá hủy bằng `CONFIRM_RESTORE=yes`.
 ```
 
 Trước upgrade lớn phải backup hoặc snapshot VPS.
@@ -551,19 +543,21 @@ Trạng thái repository hiện tại:
 - persistent volumes với tên ổn định: done;
 - Docker secret support: done;
 - Caddy config + request limits + security headers: done;
-- API proxy rate limiting: done;
-- request tracing an toàn: done;
+- API proxy rate limiting: not implemented;
+- request tracing an toàn: not implemented;
 - Docker log rotation/resource/PID hardening: done;
-- upload/output retention worker: done;
+- upload/output retention: backend lifespan là owner duy nhất, chạy mỗi 24 giờ;
 - backup + checksum + restore scripts: done;
 - scheduled backup systemd units: done;
 - health/disk monitoring systemd units: done;
 - deploy health verification: done;
-- rollback bằng immutable image tag: done;
+- rollback bằng image SHA: script hỗ trợ pin SHA; production deployment nên dùng SHA;
 - dependency pinning/update policy: done;
-- Trivy security CI gate: done;
+- Trivy security scan: informational baseline, chưa phải blocking gate cho tới khi
+   CRITICAL fixable được xác minh sạch;
 - Docker SBOM/provenance: done;
-- Docker integration CI: done;
+- Docker integration CI: workflow có compose/Caddy/local smoke; production HTTPS,
+  backup/restore thật và provider trả phí chưa được chạy trong CI;
 - GHCR publish: done;
 - guarded GitHub production deploy workflow: done.
 

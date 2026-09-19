@@ -8,9 +8,9 @@ set -a
 . ./.env
 set +a
 
-TAG="${1:-${INFRARENDER_IMAGE_TAG:-latest}}"
-if ! [[ "$TAG" =~ ^(latest|[0-9a-fA-F]{40})$ ]]; then
-  echo "Image tag must be 'latest' or a full 40-character Git SHA." >&2
+TAG="${1:-${INFRARENDER_IMAGE_TAG:-}}"
+if ! [[ "$TAG" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  echo "Production image tag must be a full 40-character Git SHA." >&2
   exit 2
 fi
 if [ -z "${INFRARENDER_DOMAIN:-}" ]; then

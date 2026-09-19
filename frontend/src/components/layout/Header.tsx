@@ -61,8 +61,13 @@ export default function Header({ workspace: w }: HeaderProps) {
     }
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setMenuOpen(false);
-        setProjectMenuOpen(false);
+        if (projectMenuOpen) {
+          setProjectMenuOpen(false);
+          projectTriggerRef.current?.focus();
+        } else if (menuOpen) {
+          setMenuOpen(false);
+          menuTriggerRef.current?.focus();
+        }
       }
     }
     if (menuOpen || projectMenuOpen) {
@@ -130,6 +135,7 @@ export default function Header({ workspace: w }: HeaderProps) {
           <div className={styles.divider}></div>
 
           <button
+            ref={projectTriggerRef}
             className={`${styles.projectDropdownButton} ${projectMenuOpen ? styles.menuOpen : ""}`}
             onClick={() => setProjectMenuOpen(!projectMenuOpen)}
             aria-haspopup="true"

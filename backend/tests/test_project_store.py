@@ -1,9 +1,11 @@
 """Durability and file ownership tests, always using temporary media directories."""
 
 import os
+import sqlite3
 import tempfile
 import time
 import unittest
+from contextlib import closing
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
@@ -39,6 +41,21 @@ class ProjectStoreTests(unittest.TestCase):
         with self.assertRaises(HTTPException) as caught:
             operation()
         self.assertEqual(caught.exception.status_code, status)
+
+    def test_schema_migration_sets_user_version_and_is_idempotent(self):
+        self.store.initialize()
+        with closing(sqlite3.connect(self.db)) as connection:
+            version = connection.execute("PRAGMA user_version").fetchone()[0]
+            empty = connection.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
+        self.assertEqual(version, 1)
+        self.assertEqual(empty, 0)
+        project = self.store.create("Giữ nguyên", {"prompt": "x"})
+        reopened = ProjectStore(self.db, self.uploads, self.outputs)
+        reopened.initialize()  # must not recreate or reset the schema
+        self.assertEqual(reopened.get(project["id"])["name"], "Giữ nguyên")
+        with closing(sqlite3.connect(self.db)) as connection:
+            version = connection.execute("PRAGMA user_version").fetchone()[0]
+        self.assertEqual(version, 1)
 
     def test_workspace_survives_new_store_instance_and_revision_increments(self):
         snapshot = {"prompt": "Phối cảnh cầu vượt", "settings": {"customKeywords": ["ban đêm"]}}

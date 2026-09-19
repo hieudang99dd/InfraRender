@@ -1,5 +1,13 @@
 # Audit fixes implementation plan
 
+> **Status (v0.6):** the audit items below have been implemented and are covered
+> by the current CI, tests and documentation. The single canonical retention
+> owner is the FastAPI lifespan sweep; the separate `maintenance` Compose service
+> was removed; backup now briefly stops writers with an EXIT trap; auth is
+> `INFRARENDER_AUTH_USER/PASS/PASS_FILE` (FastAPI Basic auth). See
+> `docs/deployment.md`, `docs/architecture.md` and `ops/README.md` for the
+> current behavior.
+
 > Execute the approved audit fixes using `superpowers:subagent-driven-development`, with independent review and regression tests. Work remains reviewable in the user's shared checkout; no deployment, paid hosting change, push, or data migration runs automatically.
 
 **Goal:** Prevent project data loss and make the documented deployment and recovery paths match the application.
@@ -32,7 +40,7 @@ Files: `frontend/src/hooks/useWorkspace.ts`, `frontend/src/lib/workspace-state.t
 
 Files: `backend/main.py`, `backend/services/config.py`, provider and prompt services, `project_store.py`, `cleanup_storage.py`, backend tests.
 
-- [ ] Reproduce mounted-secret failure with temporary files and mocked provider responses. Read `OPENAI_API_KEY_FILE` and `INFRARENDER_ACCESS_TOKEN_FILE` through the existing helper; missing configured secret files fail closed.
+- [ ] Reproduce mounted-secret failure with temporary files and mocked provider responses. Read `OPENAI_API_KEY_FILE` and `INFRARENDER_AUTH_PASS_FILE` through the existing helper; missing configured secret files fail closed.
 - [ ] Replace age-only cleanup entrypoint with `ProjectStore.cleanup`, honoring `INFRARENDER_DATA_DIR` and `INFRARENDER_RETENTION_DAYS`. Tests preserve referenced old media and delete only expired orphans.
 - [ ] Add storage readiness probing: database write transaction plus temporary write/delete in each media directory; return 503 when unavailable without exposing filesystem paths. Test healthy and unavailable storage.
 - [ ] Keep successful provider readiness after request-specific 400/422 input failures; continue invalidating on auth/server/rate-limit failures. Test both paths.

@@ -1,11 +1,15 @@
 export function getBackendUrl() {
   const url = process.env.NEXT_PUBLIC_INFRARENDER_API_URL?.trim();
   if (url) return url.replace(/\/+$/, "");
-  if (
-    typeof window !== "undefined" &&
-    !["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)
-  )
-    throw new Error("Chưa cấu hình địa chỉ backend cho website này.");
+  if (typeof window !== "undefined") {
+    if (["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)) {
+      // Local development: the backend runs on the canonical local port.
+      return "http://127.0.0.1:8000";
+    }
+    // Self-hosted Docker/Caddy stack: the browser talks to the backend through
+    // the same origin. Caddy routes /api, /uploads and /outputs to the backend.
+    return window.location.origin;
+  }
   return "http://127.0.0.1:8000";
 }
 
@@ -137,7 +141,9 @@ export async function apiRequest<T>(
 export function uploadImage(file: File, signal: AbortSignal) {
   const body = new FormData();
   body.append("file", file);
-  return apiRequest<UploadResponse>("/api/upload-image", { method: "POST", body, signal });
+  // Uploads can be up to 20 MiB; allow a much longer window than the default
+  // API timeout so slow connections do not fail silently.
+  return apiRequest<UploadResponse>("/api/upload-image", { method: "POST", body, signal }, 120_000);
 }
 
 export function requestRender(

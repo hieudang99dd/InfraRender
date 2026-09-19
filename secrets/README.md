@@ -1,12 +1,17 @@
 # Production secrets
 
-Create this file on the production server:
+Create these files on the production server (they are Git-ignored):
 
 ```text
 secrets/openai_api_key.txt
+secrets/infrarender_auth_pass.txt
 ```
 
-Put only the OpenAI API key in that file. Do not commit it to Git.
+- `secrets/openai_api_key.txt` — the OpenAI API key only.
+- `secrets/infrarender_auth_pass.txt` — the application access password used by
+  FastAPI Basic auth (at least 12 characters in production). It is separate from
+  the provider key and is what users enter in the app login screen.
 
-Production Compose mounts it read-only into the backend as a Docker secret and sets
-`OPENAI_API_KEY_FILE=/run/secrets/openai_api_key`.
+Do not commit these files to Git. Docker Compose mounts them read-only into the
+backend as Docker secrets and sets `OPENAI_API_KEY_FILE=/run/secrets/openai_api_key`
+and `INFRARENDER_AUTH_PASS_FILE=/run/secrets/infrarender_auth_pass`.

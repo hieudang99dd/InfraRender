@@ -32,9 +32,11 @@
     }
 
     # Backend routes: API, uploaded images, and render outputs go directly to FastAPI.
-    # /api/health is deliberately public (no auth required at Caddy level).
-    # All other /api/* paths and media paths are protected by the backend's own
-    # Basic auth middleware — Caddy does not add a second auth layer here.
+    # /api/health and /api/render-status are deliberately public. All other /api/*
+    # paths are protected by the backend's own Basic auth middleware (Caddy never
+    # terminates that authentication). /uploads/* and /outputs/* are PUBLIC
+    # capability URLs — anyone who knows the unguessable UUID filename can read them;
+    # that is the documented media contract, not private per-account storage.
     handle /api/* {
         reverse_proxy backend:8000
     }

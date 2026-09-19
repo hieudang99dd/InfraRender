@@ -12,6 +12,9 @@ services:
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       # -- Storage: all persistent data (SQLite + uploads + outputs) under one volume --
       INFRARENDER_DATA_DIR: /data
+      # Canonical retention (days) for unreferenced media. The backend runs the
+      # retention sweep itself every 24 hours; there is no separate worker.
+      INFRARENDER_RETENTION_DAYS: ${INFRARENDER_RETENTION_DAYS:-30}
       # -- Security & routing --
       INFRARENDER_AUTH_USER: hieu.dv
       INFRARENDER_AUTH_PASS_FILE: /run/secrets/infrarender_auth_pass
@@ -53,8 +56,9 @@ services:
 
   frontend:
     image: ghcr.io/${GHCR_OWNER:-hieudang99dd}/infrarender-frontend:${INFRARENDER_IMAGE_TAG:-latest}
-    environment:
-      INFRARENDER_API_URL: http://backend:8000
+    # No runtime environment is needed: the static export reaches the backend
+    # through the same origin, and Caddy routes /api, /uploads and /outputs to
+    # the backend service.
     expose:
       - "3000"
     depends_on:
@@ -89,37 +93,10 @@ services:
       retries: 3
       start_period: 15s
 
-  maintenance:
-    image: ghcr.io/${GHCR_OWNER:-hieudang99dd}/infrarender-backend:${INFRARENDER_IMAGE_TAG:-latest}
-    environment:
-      INFRARENDER_UPLOAD_RETENTION_HOURS: ${INFRARENDER_UPLOAD_RETENTION_HOURS:-168}
-      INFRARENDER_OUTPUT_RETENTION_HOURS: ${INFRARENDER_OUTPUT_RETENTION_HOURS:-720}
-      INFRARENDER_CLEANUP_INTERVAL_SECONDS: ${INFRARENDER_CLEANUP_INTERVAL_SECONDS:-21600}
-      INFRARENDER_LOG_LEVEL: ${INFRARENDER_LOG_LEVEL:-INFO}
-    volumes:
-      - infrarender_data:/data
-    command: ["python", "-m", "services.cleanup_storage", "--loop"]
-    restart: unless-stopped
-    init: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    pids_limit: 64
-    mem_limit: ${MAINTENANCE_MEMORY_LIMIT:-256m}
-    cpus: ${MAINTENANCE_CPU_LIMIT:-0.25}
-    logging:
-      driver: json-file
-      options:
-        max-size: "5m"
-        max-file: "3"
-
   caddy:
     image: caddy:2.11.4-alpine
     environment:
       INFRARENDER_DOMAIN: ${INFRARENDER_DOMAIN:?Set INFRARENDER_DOMAIN in the server .env file}
-
-
     ports:
       - "80:80"
       - "443:443"

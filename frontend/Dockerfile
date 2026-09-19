@@ -11,41 +11,22 @@ RUN npm run build
 # Verify that the static export artifact was produced
 RUN test -f /app/out/index.html && test -d /app/out/_next
 
-# Stage 2: Serve the static files with nginx (unprivileged)
-# Use nginx:alpine but configure it to run as non-root (no chown required at runtime).
-# We pre-create the runtime directories owned by nginx uid 101 during the build step
-# so that no capability (CAP_CHOWN / CAP_SETUID) is needed at container start.
+# Stage 2: Serve the static files with nginx running as the unprivileged nginx user.
+# Nginx configuration is owned by this repository (nginx.conf), so no runtime
+# string-patching of the upstream image is needed and no capability such as
+# CAP_CHOWN / CAP_SETUID / CAP_NET_BIND_SERVICE is required at container start.
 FROM nginx:1.27-alpine AS runner
 
-# Copy static export
+# Copy static export and our nginx configuration.
 COPY --from=builder /app/out /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/nginx.conf
 
-# Remove default nginx config and write our own.
-# Configure nginx to run without master process needing root:
-#   - listen on unprivileged port 3000 (no CAP_NET_BIND_SERVICE below 1024)
-#   - use /tmp for all runtime state (writable by any user, no chown needed)
-#   - pid file in /tmp (nginx default needs /var/run/nginx.pid, but we redirect)
+# Remove the image's default server config, then pre-create the runtime
+# directories owned by the nginx user during the build (as root) so the
+# container itself never needs to chown anything at startup.
 RUN rm /etc/nginx/conf.d/default.conf \
-    && printf 'server {\n\
-    listen 3000;\n\
-    root /usr/share/nginx/html;\n\
-    index index.html;\n\
-    # Serve pre-rendered pages; fall back to index.html for SPA navigation\n\
-    location / {\n\
-        try_files $uri $uri/ $uri.html /index.html;\n\
-    }\n\
-    # Static assets have content-addressed hashes — safe to cache\n\
-    location /_next/static/ {\n\
-        expires 1y;\n\
-        add_header Cache-Control "public, immutable";\n\
-    }\n\
-}\n' > /etc/nginx/conf.d/infrarender.conf \
-    && sed -i 's|pid\s*/var/run/nginx.pid;|pid /tmp/nginx.pid;|' /etc/nginx/nginx.conf \
-    && sed -i '/^http {/a\\    client_body_temp_path /tmp/client_body;\n    proxy_temp_path /tmp/proxy;\n    fastcgi_temp_path /tmp/fastcgi;\n    uwsgi_temp_path /tmp/uwsgi;\n    scgi_temp_path /tmp/scgi;' /etc/nginx/nginx.conf \
-    && mkdir -p /tmp/client_body /tmp/proxy /tmp/fastcgi /tmp/uwsgi /tmp/scgi \
-    && chown -R nginx:nginx /tmp/client_body /tmp/proxy /tmp/fastcgi /tmp/uwsgi /tmp/scgi \
-    && chown -R nginx:nginx /var/cache/nginx \
-    && chown nginx:nginx /etc/nginx/conf.d/infrarender.conf
+    && mkdir -p /tmp/client_body /tmp/proxy /tmp/fastcgi /tmp/uwsgi /tmp/scgi /var/cache/nginx \
+    && chown -R nginx:nginx /tmp/client_body /tmp/proxy /tmp/fastcgi /tmp/uwsgi /tmp/scgi /var/cache/nginx
 
 # Run as unprivileged nginx user (uid 101)
 USER nginx

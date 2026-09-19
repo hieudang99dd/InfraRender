@@ -22,9 +22,9 @@ Before the first deploy, validate the VPS configuration:
 bash ops/preflight.sh
 ```
 
-Preflight verifies the production `.env`, OpenAI secret file, Docker daemon,
-Docker Compose, domain format, Basic Auth bcrypt hash and the final deploy Compose
-configuration. `ops/deploy.sh` runs this automatically before changing containers.
+Preflight verifies the production `.env`, OpenAI secret file, application access
+password secret, Docker daemon, Docker Compose, domain format and the final deploy
+Compose configuration. `ops/deploy.sh` runs this automatically before changing containers.
 
 ## Deploy
 
@@ -60,10 +60,15 @@ bash ops/backup.sh /var/backups/infrarender
 
 Each backup contains:
 
-- `infrarender_uploads.tar.gz`
-- `infrarender_outputs.tar.gz`
+- `infrarender_data.tar.gz` — SQLite database + uploads/ + outputs/
 - SHA-256 checksums
 - timestamp, host and Git revision metadata
+
+For every running container that mounts the data volume (normally just the
+backend), the script stops it, archives the volume, restarts it via an `EXIT`
+trap, and waits for it to become healthy again. A live `tar` is never taken while
+the writer is running, so the SQLite database and the media files belong to the
+same point in time. If the script fails, the trap still restarts the backend.
 
 Backups older than `INFRARENDER_BACKUP_RETENTION_DAYS` are pruned after a
 successful backup. Default: 14 days.
@@ -82,8 +87,9 @@ docker compose -f compose.deploy.yaml up -d
 bash ops/production-check.sh
 ```
 
-The restore script verifies `SHA256SUMS` when present and refuses to overwrite a
-volume that is still attached to a running container.
+The restore script verifies `SHA256SUMS` when present, validates that the archive
+contains the expected `projects.sqlite3` + `uploads/` + `outputs/` layout, and
+refuses to overwrite a volume that is still attached to a running container.
 
 ## Health and disk check
 
@@ -96,7 +102,6 @@ It verifies:
 - public HTTPS `/api/health`;
 - backend container health;
 - frontend container health;
-- maintenance worker running;
 - Caddy running;
 - Docker filesystem usage below `INFRARENDER_DISK_WARN_PERCENT`.
 

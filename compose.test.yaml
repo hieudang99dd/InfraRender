@@ -1,0 +1,48 @@
+# Test-only override for local/CI integration testing.
+#
+# Starts a Caddy instance in front of the regular local stack (compose.yaml +
+# compose.local.yaml) using the SAME Caddyfile as production but with
+# INFRARENDER_DOMAIN=localhost. Caddy serves localhost with its internal CA, so
+# no internet access or DNS is required. Run:
+#
+#   docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml up -d
+#
+# The self-hosted routing contract is then exercised through:
+#   https://localhost:8443/           -> static frontend
+#   https://localhost:8443/api/*      -> backend
+#   https://localhost:8443/uploads/*  -> backend media
+#   https://localhost:8443/outputs/*  -> backend media
+#
+# This file is not used for production deployments.
+
+services:
+  caddy:
+    image: caddy:2.11.4-alpine
+    environment:
+      INFRARENDER_DOMAIN: localhost
+    ports:
+      - "127.0.0.1:8080:80"
+      - "127.0.0.1:8443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_test_data:/data
+      - caddy_test_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    restart: "no"
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  caddy_test_data:
+  caddy_test_config:

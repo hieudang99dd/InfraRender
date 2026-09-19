@@ -172,14 +172,35 @@ class ProjectStore:
             connection = sqlite3.connect(self.db_path, timeout=15)
             try:
                 connection.execute("PRAGMA journal_mode=WAL")
-                connection.execute("""CREATE TABLE IF NOT EXISTS projects (
-                    id TEXT PRIMARY KEY, name TEXT NOT NULL, revision INTEGER NOT NULL,
-                    updated_at TEXT NOT NULL, workspace TEXT NOT NULL
-                )""")
+                version = connection.execute("PRAGMA user_version").fetchone()[0]
+                self._migrate(connection, version)
                 connection.commit()
                 self._initialized = True
             finally:
                 connection.close()
+
+    @staticmethod
+    def _migrate(connection: sqlite3.Connection, current: int) -> None:
+        """Apply schema migrations in order using PRAGMA user_version.
+
+        Version 1: the original projects table this store has always used.
+        Future schema changes must be additive migrations applied in the same
+        transaction as the user_version bump, so an interrupted migration rolls
+        back cleanly. Run smoke tests before bumping the version.
+        """
+        if current < 1:
+            connection.execute(
+                """CREATE TABLE IF NOT EXISTS projects (
+                    id TEXT PRIMARY KEY, name TEXT NOT NULL, revision INTEGER NOT NULL,
+                    updated_at TEXT NOT NULL, workspace TEXT NOT NULL
+                )"""
+            )
+            current = 1
+        # Example for a future schema change:
+        # if current < 2:
+        #     connection.execute("ALTER TABLE projects ADD COLUMN ...")
+        #     current = 2
+        connection.execute(f"PRAGMA user_version = {int(current)}")
 
     @contextmanager
     def _connection(self, write: bool = False):

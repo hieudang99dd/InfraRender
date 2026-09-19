@@ -54,6 +54,8 @@ class ProductionApiTests(unittest.TestCase):
             # Auth check endpoint
             self.assertEqual(self.client.get("/api/auth/check").status_code, 401)
             self.assertEqual(self.client.get("/api/auth/check", headers={"Authorization": wrong_auth}).status_code, 401)
+            wrong_user = "Basic " + base64.b64encode(b"someone-else:test-access-token").decode()
+            self.assertEqual(self.client.get("/api/auth/check", headers={"Authorization": wrong_user}).status_code, 401)
             self.assertEqual(self.client.get("/api/auth/check", headers={"Authorization": "Bearer invalid"}).status_code, 401)
             
             auth_response = self.client.get("/api/auth/check", headers={"Authorization": auth})

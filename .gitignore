@@ -14,6 +14,13 @@ frontend/.env
 frontend/.env.local
 
 # -----------------------------
+# PRODUCTION SECRET FILES
+# -----------------------------
+# Docker secrets mounted from ./secrets/*.txt (production host only)
+secrets/
+!secrets/README.md
+
+# -----------------------------
 # PYTHON / FASTAPI
 # -----------------------------
 __pycache__/

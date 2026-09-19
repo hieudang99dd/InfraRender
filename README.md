@@ -47,7 +47,7 @@ Xem [hướng dẫn phát triển](docs/development.md) để chạy riêng từ
 
 ## Lưu trữ và phạm vi sử dụng
 
-Mặc định dữ liệu nằm trong `backend/projects.sqlite3`, `backend/uploads/` và `backend/outputs/`. `INFRARENDER_DATA_DIR` chuyển cả ba vào thư mục khác; Docker dùng `/data` và cần volume bền vững. Ảnh còn được bất kỳ dự án nào tham chiếu được giữ lại. Ảnh không được tham chiếu và có tuổi file quá 30 ngày được xét dọn mỗi ngày; có thể đổi thời hạn bằng biến môi trường.
+Mặc định dữ liệu nằm trong `backend/projects.sqlite3`, `backend/uploads/` và `backend/outputs/`. `INFRARENDER_DATA_DIR` chuyển cả ba vào thư mục khác; Docker dùng `/data` và cần volume bền vững. Ảnh còn được bất kỳ dự án nào tham chiếu được giữ lại. Ảnh không được tham chiếu và có tuổi file quá `INFRARENDER_RETENTION_DAYS` (mặc định 30) được xét dọn mỗi 24 giờ bởi chính backend (không có maintenance worker riêng).
 
 Bản triển khai dành cho một cá nhân hoặc nhóm tin cậy dùng chung kho dự án. Token ứng dụng bảo vệ API thao tác nhưng chưa có tài khoản hay phân quyền theo người dùng. URL ảnh có tên ngẫu nhiên vẫn đọc được công khai bởi người biết URL; đây không phải kho ảnh riêng tư theo tài khoản.
 
@@ -67,11 +67,27 @@ Test provider dùng phản hồi mô phỏng, không thay thế một lần tạ
 
 ## Triển khai
 
-Mục tiêu frontend: [https://hieudang99dd.github.io/InfraRender/](https://hieudang99dd.github.io/InfraRender/). GitHub Pages chỉ phục vụ frontend tĩnh. Backend chạy riêng trên máy chủ Python có HTTPS và ổ lưu trữ bền vững.
+Có hai đường triển khai được hỗ trợ (chi tiết: `docs/deployment.md`):
 
-Workflow Pages cần repository variable `NEXT_PUBLIC_INFRARENDER_API_URL` chứa URL HTTPS của backend. Khóa provider và `INFRARENDER_ACCESS_TOKEN` chỉ cấu hình tại backend, không đưa vào biến public hoặc bundle trình duyệt.
+**A. GitHub Pages + backend HTTPS riêng** — Mục tiêu frontend:
+[https://hieudang99dd.github.io/InfraRender/](https://hieudang99dd.github.io/InfraRender/).
+Pages chỉ phục vụ frontend tĩnh; backend FastAPI chạy riêng trên máy chủ Python có
+HTTPS và ổ lưu trữ bền vững. Workflow Pages cần repository variable
+`NEXT_PUBLIC_INFRARENDER_API_URL` chứa URL HTTPS của backend. Khóa provider và
+`INFRARENDER_AUTH_PASS` chỉ cấu hình tại backend, không đưa vào biến public hoặc
+bundle trình duyệt.
 
-**Chưa xác nhận triển khai production:** cần URL backend thật, bí mật cấu hình tại máy chủ, bật Pages và kiểm tra toàn bộ luồng từ trình duyệt. Xem [hướng dẫn triển khai](docs/deployment.md).
+**B. Docker/Caddy self-host cùng origin** — `compose.deploy.yaml` chạy toàn bộ
+stack (frontend static, backend, Caddy) trên một VPS. Caddy cấp HTTPS cho
+`INFRARENDER_DOMAIN` và route `/api/*`, `/uploads/*`, `/outputs/*` sang backend;
+frontend tĩnh gọi backend qua same-origin, không cần URL backend trong bundle.
+Backup/restore an toàn (dừng writer ngắn, SHA-256 manifest): `ops/backup.sh` và
+`ops/restore.sh`.
+
+**Chưa xác nhận deployment production thật:** cần domain/URL backend thật, bí mật
+cấu hình tại máy chủ và kiểm tra toàn bộ luồng từ trình duyệt. Xem mục "Kiểm tra
+mã nguồn" và [hướng dẫn triển khai](docs/deployment.md). A real paid provider
+end-to-end render is not executed by CI and has not been run in this environment.
 
 ## Tài liệu
 

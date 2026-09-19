@@ -1,18 +1,43 @@
 # Triển khai InfraRenderAI
 
-## Trạng thái và kiến trúc
+## Trạng thái
 
-Mục tiêu frontend là `https://hieudang99dd.github.io/InfraRender/`, repository `hieudang99dd/InfraRender`. Cấu hình trong repo chuẩn bị static build và backend riêng; **chưa có bằng chứng triển khai production hoàn tất**. Cần backend HTTPS thật, bí mật cấu hình ở host, GitHub Pages được bật và kiểm tra toàn bộ luồng có provider thật.
+Repo chuẩn bị sẵn code, CI, Docker/Compose/Caddy, ops scripts và tài liệu cho hai
+đường triển khai (mục dưới). **Chưa có bằng chứng deployment production thật hoàn
+tất** từ môi trường này: cần domain/URL backend thật, bí mật cấu hình ở host, GitHub
+Pages được bật và kiểm tra toàn bộ luồng có provider thật. Real paid provider
+end-to-end render is executed neither by CI nor in this environment.
+
+## Hai đường triển khai
+
+**A. GitHub Pages + backend HTTPS riêng**
 
 ```text
 GitHub Actions → frontend/out → GitHub Pages /InfraRender/
-                                      ↓ HTTPS, CORS, token ứng dụng
+                                      ↓ HTTPS, CORS, Basic auth (app)
                            FastAPI trên Python host
                                       ↓
                            Provider AI + volume lưu dữ liệu
 ```
 
-GitHub Pages không chạy FastAPI. Không đưa provider key hoặc token ứng dụng vào repository variable public, `.env` frontend hay JavaScript bundle.
+Frontend static export gọi backend qua `NEXT_PUBLIC_INFRARENDER_API_URL` (đóng vào
+bundle lúc build). GitHub Pages không chạy FastAPI. Không đưa provider key hoặc mật
+khẩu truy cập vào repository variable public, `.env` frontend hay JavaScript bundle.
+
+**B. Docker/Caddy self-host cùng origin**
+
+```text
+Browser → https://INFRARENDER_DOMAIN
+                ├─ /api/*, /uploads/*, /outputs/* → Caddy → backend:8000
+                └─ /* → Caddy → frontend:3000 (nginx static)
+```
+
+`compose.deploy.yaml` là đường production canonical cho self-host: frontend static
+(nginx non-root), backend FastAPI và Caddy; image được publish lên GHCR bởi
+`docker-publish.yml`, triển khai bằng `ops/deploy.sh`. Frontend không chứa URL
+backend — trình duyệt gọi same-origin, Caddy route API/media sang backend. Test
+tự động cho routing này chạy trong CI (`compose.test.yaml` với
+`INFRARENDER_DOMAIN=localhost`, internal CA).
 
 ## Backend
 
@@ -41,24 +66,35 @@ Backend từ chối startup production nếu password quá ngắn, thiếu publi
 
 ### Docker
 
-Từ thư mục gốc:
+**Local stack** (cho máy dev, toàn bộ service build từ source):
 
 ```powershell
-docker build -t infrarender-backend ./backend
-docker volume create infrarender-data
+docker compose -f compose.yaml -f compose.local.yaml up -d --build
 ```
 
-Image chạy user UID `10001`, ghi vào `/data`. Mount volume phải cho UID này quyền ghi. Thiết lập biến/secret bằng giao diện hoặc cơ chế secret của host, rồi chạy image với volume tại `/data`. Nếu dùng file env local để thử container, file phải được Git bỏ qua và phải chứa `INFRARENDER_ENV=production`; đừng dùng nguyên cấu hình development để ghi đè chế độ production của image.
+- `compose.local.yaml` bật `INFRARENDER_ENV=development` (không yêu cầu auth/HTTPS);
+- nginx trong image frontend route `/api/*`, `/uploads/*`, `/outputs/*` sang backend
+  để trình duyệt dùng same-origin ngay cả khi không có Caddy.
 
-Docker khởi động `python -m uvicorn main:app --host 0.0.0.0 --port "$PORT"`. Healthcheck gọi `/api/health`; host terminate HTTPS ở phía trước container. Cần build và chạy container trên host để xác minh; Dockerfile tự nó chưa chứng minh triển khai thành công.
-
-Không dùng Docker thì cài `backend/requirements.txt`, chạy từ thư mục `backend/`:
+**Production stack** (image GHCR, Caddy TLS, auth bắt buộc): `compose.deploy.yaml`.
 
 ```text
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
+cp .env.example .env        # điền INFRARENDER_DOMAIN, resource limits
+mkdir -p secrets
+printf '%s' '<openai-key>' > secrets/openai_api_key.txt
+printf '%s' '<app-password-12+-chars>' > secrets/infrarender_auth_pass.txt
+chmod 600 secrets/*.txt
+bash ops/preflight.sh
+bash ops/deploy.sh <full-40-char-git-sha>   # hoặc default: latest
 ```
 
-Thay cổng theo host. Giữ secrets ở runtime, không chép vào image. `backend/.dockerignore` loại `.env*`, môi trường ảo, database, ảnh và cache khỏi build context.
+`ops/preflight.sh` kiểm tra `.env`, các secret file, Docker daemon, Compose, format
+domain và cấu hình `compose.deploy.yaml`. `ops/deploy.sh` kéo image, recreate
+service, chờ HTTPS health và ghi tag thành công vào `.deploy-current`.
+
+Backend image chạy user UID `10001`, ghi vào `/data` (volume `infrarender_data`).
+Chỉ cấu hình secrets qua Docker secrets/environment của host; không đưa
+`INFRARENDER_ENV=development` vào host env vì image đã set `production`.
 
 ### Lưu trữ và phạm vi truy cập
 
@@ -66,7 +102,10 @@ Thay cổng theo host. Giữ secrets ở runtime, không chép vào image. `back
 
 Đây là ứng dụng cho một nhóm tin cậy dùng chung token và kho dự án. Chưa có tài khoản hay phân quyền từng dự án. Media `/uploads/...`, `/outputs/...` đọc công khai qua URL có tên UUID; người biết URL có thể tải ảnh. Token bảo vệ API thao tác, không biến URL ảnh thành tài nguyên riêng tư theo người dùng.
 
-Retention mặc định dọn file không được tham chiếu có tuổi quá 30 ngày, xét mỗi 24 giờ. Ảnh dự án đang dùng được giữ. API cleanup có chế độ xem trước; xóa dự án hoặc file qua API thay vì xóa filesystem tùy ý.
+Retention của file media không được tham chiếu: `INFRARENDER_RETENTION_DAYS` (mặc
+định 30, 1–3650), quét mỗi 24 giờ bởi **chính backend** (không có maintenance
+worker riêng từ v0.6). Ảnh dự án đang dùng được giữ. API cleanup có chế độ xem
+trước; xóa dự án hoặc file qua API thay vì xóa filesystem tùy ý.
 
 ## Frontend GitHub Pages
 
@@ -105,6 +144,19 @@ Kiểm thử mô phỏng hoặc trang chủ tải được chưa đủ chứng m
 
 ## Sao lưu và rollback
 
-Sao lưu database và ảnh cùng thời điểm. Với sao chép file thông thường, dừng backend trước để tránh SQLite đang ghi. Giữ bản sao ngoài volume của dịch vụ. Khôi phục cả database và ảnh, không chỉ một phía.
+**Backup:** `ops/backup.sh [backup_root]`. Script dừng mọi container dùng volume
+`infrarender_data` (thường chỉ backend), tar toàn bộ volume (SQLite + uploads +
+outputs) — vì writer đã dừng nên DB, WAL và media khớp cùng một thời điểm — rồi
+restart qua `EXIT` trap và chờ healthy. Kết quả gồm `infrarender_data.tar.gz`,
+`SHA256SUMS` và `metadata.txt`. Sao lưu cũ hơn `INFRARENDER_BACKUP_RETENTION_DAYS`
+bị dọn sau một backup thành công. Giữ bản sao ngoài VPS hoặc dùng snapshot provider.
 
-Rollback frontend bằng commit đã biết ổn định rồi chạy lại workflow với URL backend phù hợp. Rollback backend bằng image/revision trước, giữ volume hiện tại hoặc khôi phục bản sao tương thích nếu có thay đổi schema. Không đưa bí mật vào commit rollback.
+**Restore:** `CONFIRM_RESTORE=yes bash ops/restore.sh <backup-dir>` — yêu cầu dừng
+stack trước (`docker compose -f compose.deploy.yaml down`), xác minh SHA-256, kiểm
+tra layout archive (phải có `projects.sqlite3`, `uploads/`, `outputs/`) và từ chối
+nếu volume còn đang được container dùng. Sau restore: start stack và chạy
+`bash ops/production-check.sh`.
+
+Rollback frontend bằng commit đã biết ổn định rồi chạy lại workflow Pages/`deploy.sh`
+với tag phù hợp. Rollback backend bằng image SHA trước (`bash ops/rollback.sh`),
+giữ volume hoặc khôi phục bản sao tương thích. Không đưa bí mật vào commit rollback.

@@ -16,18 +16,18 @@ readiness.
 | Docker frontend image | PASS | Docker integration CI |
 | Docker backend image | PASS | Docker integration CI |
 | Docker Compose local | PASS | CI config + smoke test |
-| Docker Compose production | PASS when CI green | CI config validation |
-| Next.js -> FastAPI proxy | PASS | Docker smoke test |
+| Docker Compose production | PASS when CI green | CI config validation (compose.deploy.yaml) |
+| Self-host Caddy routing | PASS when CI green | CI `compose.test.yaml` smoke (frontend + /api/health + upload/media round trip) |
 | Persistent volumes | READY | stable named volumes |
-| Docker secret support | READY | `OPENAI_API_KEY_FILE` |
+| Docker secret support | READY | `OPENAI_API_KEY_FILE` + `INFRARENDER_AUTH_PASS_FILE` |
 | HTTPS reverse proxy | READY | pinned Caddy + validated Caddyfile |
-| Request size protection | READY | Next.js proxy + Caddy |
-| API rate limiting | READY | Next.js server proxy |
+| Request size protection | READY | Caddy `request_body` 22MiB + backend request/image limits |
+| Provider concurrency bound | READY | backend semaphore (2 AI operations) |
 | Request tracing | READY | `X-Request-ID` + backend metadata logs |
 | Log rotation | READY | Docker json-file limits |
 | Resource limits | READY | Compose environment controls |
-| File retention | READY | maintenance worker |
-| Vulnerability/secret scan | READY | Trivy CI gate |
+| File retention | READY | backend lifecycle retention sweep (24h, `INFRARENDER_RETENTION_DAYS`) |
+| Vulnerability/secret scan | INFORMATIONAL (not gating) | Trivy scans run with `exit-code: 0`; CRITICAL-fixable baseline not yet verified green |
 | Dependency updates | READY | Dependabot |
 | Container SBOM/provenance | READY | GHCR publish workflow |
 | Immutable deployment tags | READY | full Git SHA tags |

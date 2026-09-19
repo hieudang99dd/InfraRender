@@ -75,10 +75,10 @@ jobs:
       - name: Validate Compose
         run: |
           docker compose -f compose.yaml -f compose.local.yaml config
+          docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml config
           mkdir -p secrets
           printf '%s' 'ci-placeholder-key' > secrets/openai_api_key.txt
           printf '%s' 'ci-placeholder-pass-at-least-12-chars' > secrets/infrarender_auth_pass.txt
-          INFRARENDER_DOMAIN=render.example.com docker compose -f compose.yaml -f compose.production.yaml config
           INFRARENDER_DOMAIN=render.example.com docker compose -f compose.deploy.yaml config
 
       - name: Validate Caddy configuration
@@ -92,23 +92,29 @@ jobs:
       - name: Build Docker images
         run: docker compose -f compose.yaml -f compose.local.yaml build
 
-      - name: Scan backend Docker image
+      - name: Scan backend Docker image (informational baseline)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           version: v0.74.0
           image-ref: infrarender-backend:local
           severity: CRITICAL
           ignore-unfixed: true
+          # Informational until the CRITICAL-fixable baseline is verified as
+          # clean; see docs/PRODUCTION_READINESS.md. Do not describe this as a
+          # blocking gate while exit-code is 0.
           exit-code: "0"
           format: table
 
-      - name: Scan frontend Docker image
+      - name: Scan frontend Docker image (informational baseline)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           version: v0.74.0
           image-ref: infrarender-frontend:local
           severity: CRITICAL
           ignore-unfixed: true
+          # Informational until the CRITICAL-fixable baseline is verified as
+          # clean; see docs/PRODUCTION_READINESS.md. Do not describe this as a
+          # blocking gate while exit-code is 0.
           exit-code: "0"
           format: table
 
@@ -134,30 +140,97 @@ jobs:
             fi
             sleep 2
           done
-          
+
           if [ "$backend_ok" -eq 0 ]; then
             echo "Backend health check failed"
             docker compose -f compose.yaml -f compose.local.yaml ps
             docker compose -f compose.yaml -f compose.local.yaml logs --no-color backend
             exit 1
           fi
-          
-          echo "Testing frontend availability..."
+
+          echo "Testing frontend availability and content..."
           frontend_ok=0
           for attempt in {1..15}; do
-            if curl --fail --silent --show-error http://127.0.0.1:3000/ > /dev/null; then
-              frontend_ok=1
-              break
+            if curl --fail --silent --show-error http://127.0.0.1:3000/ > /tmp/frontend.html; then
+              if grep -q "InfraRender" /tmp/frontend.html; then
+                frontend_ok=1
+                break
+              fi
             fi
             sleep 2
           done
-          
+
           if [ "$frontend_ok" -eq 0 ]; then
             echo "Frontend check failed"
             docker compose -f compose.yaml -f compose.local.yaml ps
             docker compose -f compose.yaml -f compose.local.yaml logs --no-color frontend
             exit 1
           fi
+
+      - name: Smoke test self-host routing through Caddy
+        run: |
+          # Start Caddy in front of the same local stack. The production Caddyfile
+          # is reused with INFRARENDER_DOMAIN=localhost (internal CA, no DNS needed).
+          docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml up -d caddy
+
+          echo "Testing HTTPS /api/health through Caddy..."
+          api_ok=0
+          for attempt in {1..30}; do
+            if curl -k --fail --silent --show-error https://localhost:8443/api/health > /tmp/caddy-health.json; then
+              if jq -e '.status == "ok" and .service == "InfraRender AI Backend"' /tmp/caddy-health.json > /dev/null; then
+                api_ok=1
+                break
+              fi
+            fi
+            sleep 2
+          done
+
+          if [ "$api_ok" -eq 0 ]; then
+            echo "Self-host API routing through Caddy failed"
+            docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml ps
+            docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml logs --no-color caddy
+            exit 1
+          fi
+
+          echo "Testing static frontend through Caddy..."
+          if ! curl -k --fail --silent --show-error https://localhost:8443/ | grep -q "InfraRender"; then
+            echo "Frontend page through Caddy missing InfraRender content"
+            docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml logs --no-color caddy
+            exit 1
+          fi
+
+          echo "Testing /uploads routing reaches the backend (404 JSON, not SPA fallback)..."
+          code="$(curl -k --silent -o /tmp/media-404.json -w '%{http_code}' https://localhost:8443/uploads/00000000000000000000000000000000.png)"
+          if [ "$code" != "404" ] || ! grep -q '"detail"' /tmp/media-404.json; then
+            echo "Unexpected /uploads response: HTTP $code $(cat /tmp/media-404.json)"
+            docker compose -f compose.yaml -f compose.local.yaml -f compose.test.yaml logs --no-color caddy
+            exit 1
+          fi
+
+          echo "Testing upload -> /uploads download round trip through Caddy..."
+          python3 - <<'PY'
+import base64
+# 1x1 PNG fixture; validated by the backend with Pillow.
+open("/tmp/pixel.png", "wb").write(
+    base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    )
+)
+PY
+          curl -k --fail --silent --show-error \
+            -F "file=@/tmp/pixel.png;type=image/png" \
+            https://localhost:8443/api/upload-image > /tmp/upload.json
+          if ! jq -e '.status == "success"' /tmp/upload.json > /dev/null; then
+            echo "Upload through Caddy failed: $(cat /tmp/upload.json)"
+            exit 1
+          fi
+          name="$(jq -r '.saved_name' /tmp/upload.json)"
+          curl -k --fail --silent --show-error "https://localhost:8443/uploads/$name" -o /tmp/downloaded.png
+          if ! cmp -s /tmp/pixel.png /tmp/downloaded.png; then
+            echo "Downloaded media differs from uploaded bytes"
+            exit 1
+          fi
+          echo "Self-host routing through Caddy: PASS"
 
       - name: Show container status
         if: always()

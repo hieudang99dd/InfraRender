@@ -1,4 +1,9 @@
-"""Reference-aware maintenance using the same storage contract as the API."""
+"""Reference-aware maintenance using the same storage contract as the API.
+
+The canonical retention owner is the FastAPI application itself: `main.lifespan`
+runs `store.cleanup()` every 24 hours. This module is a manual/ops entry point
+(for example previews with `--dry-run`), not a second background worker.
+"""
 
 import argparse
 import json

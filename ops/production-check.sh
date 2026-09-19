@@ -37,7 +37,7 @@ for service in backend frontend; do
   fi
 done
 
-for service in maintenance caddy; do
+for service in caddy; do
   container="$(docker compose -f compose.deploy.yaml ps -q "$service" 2>/dev/null || true)"
   if [ -z "$container" ]; then
     echo "ERROR: $service container is not present" >&2
