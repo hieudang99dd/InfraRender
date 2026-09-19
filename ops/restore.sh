@@ -46,7 +46,7 @@ validate_archive_layout() {
 
 restore_volume() {
   local volume="$1"
-  local archive="${volume}.tar.gz"
+  local archive="infrarender_data.tar.gz"
 
   if [ -n "$(docker ps --filter "volume=$volume" --format '{{.ID}}')" ]; then
     echo "Volume $volume is in use. Stop production containers before restore." >&2
