@@ -29,7 +29,9 @@ export function useRenderService() {
       } catch (err) {
         if (!controller.signal.aborted) {
           setService(null);
-          setError(err instanceof Error ? err.message : "Chưa kết nối được dịch vụ dựng phối cảnh.");
+          setError(
+            err instanceof Error ? err.message : "Chưa kết nối được dịch vụ dựng phối cảnh.",
+          );
         }
       } finally {
         if (!controller.signal.aborted) setChecking(false);

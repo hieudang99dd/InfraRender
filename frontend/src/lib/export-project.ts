@@ -28,7 +28,13 @@ export type ExportOptions = {
 
 /** Sanitise a string so it is safe to use as a filename/folder name. */
 function safeName(raw: string, fallback: string): string {
-  return raw.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_").trim().slice(0, 100) || fallback;
+  return (
+    raw
+      .replace(/[\\/:*?"<>|]/g, "_")
+      .replace(/\s+/g, "_")
+      .trim()
+      .slice(0, 100) || fallback
+  );
 }
 
 /** Fetch a URL and return its content as a Blob. Throws with a friendly message on failure. */
@@ -45,11 +51,15 @@ async function fetchBlob(url: string): Promise<Blob> {
  */
 export async function exportProjectZip(
   workspace: WorkspaceState,
-  options: ExportOptions = {}
+  options: ExportOptions = {},
 ): Promise<number> {
   const { onProgress } = options;
-  const report = (stage: ExportProgress["stage"], current: number, total: number, message: string) =>
-    onProgress?.({ stage, current, total, message });
+  const report = (
+    stage: ExportProgress["stage"],
+    current: number,
+    total: number,
+    message: string,
+  ) => onProgress?.({ stage, current, total, message });
 
   const folderName = safeName(workspace.projectName, "InfraRenderAI_Project");
   const zip = new JSZip();
@@ -77,10 +87,12 @@ export async function exportProjectZip(
       root.folder("01_anh_goc")!.file(fname, blob);
     } catch {
       // Non-fatal: include a placeholder note instead.
-      root.folder("01_anh_goc")!.file(
-        "KHONG_TAI_DUOC.txt",
-        `Không thể tải ảnh gốc từ máy chủ.\nURL: ${workspace.source.url}\n`
-      );
+      root
+        .folder("01_anh_goc")!
+        .file(
+          "KHONG_TAI_DUOC.txt",
+          `Không thể tải ảnh gốc từ máy chủ.\nURL: ${workspace.source.url}\n`,
+        );
     }
     done += 1;
     report("images", done, totalImages, "Đã tải ảnh gốc.");
@@ -102,7 +114,7 @@ export async function exportProjectZip(
     } catch {
       renderFolder.file(
         `render_${String(i + 1).padStart(3, "0")}_KHONG_TAI_DUOC.txt`,
-        `Không thể tải ảnh render từ máy chủ.\nURL: ${rv.url}\n`
+        `Không thể tải ảnh render từ máy chủ.\nURL: ${rv.url}\n`,
       );
     }
     done += 1;
@@ -137,10 +149,7 @@ export async function exportProjectZip(
 
   // Full prompt version history as JSON
   if (workspace.versions.length > 0) {
-    promptFolder.file(
-      "lich_su_prompt.json",
-      JSON.stringify(workspace.versions, null, 2)
-    );
+    promptFolder.file("lich_su_prompt.json", JSON.stringify(workspace.versions, null, 2));
   }
 
   // Render version metadata (without blobs — images are in 02_anh_render/)
@@ -169,7 +178,11 @@ export async function exportProjectZip(
     exportedAt: new Date().toISOString(),
     projectName: workspace.projectName,
     source: workspace.source
-      ? { name: workspace.source.name, size: workspace.source.size, resolution: workspace.source.resolution }
+      ? {
+          name: workspace.source.name,
+          size: workspace.source.size,
+          resolution: workspace.source.resolution,
+        }
       : null,
     settings: workspace.settings,
     notes: workspace.notes,
@@ -187,7 +200,7 @@ export async function exportProjectZip(
 
   const blob = await zip.generateAsync(
     { type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } },
-    (meta) => report("packing", done, totalImages, `Đang nén… ${meta.percent.toFixed(0)}%`)
+    (meta) => report("packing", done, totalImages, `Đang nén… ${meta.percent.toFixed(0)}%`),
   );
 
   const date = new Date().toISOString().slice(0, 10);
@@ -201,9 +214,12 @@ export async function exportProjectZip(
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(objUrl), 2000);
 
-  const fileCount = totalImages + (workspace.prompt ? 1 : 0) +
-    (workspace.versions.length ? 1 : 0) + (workspace.renderVersions.length ? 1 : 0) + 1;
+  const fileCount =
+    totalImages +
+    (workspace.prompt ? 1 : 0) +
+    (workspace.versions.length ? 1 : 0) +
+    (workspace.renderVersions.length ? 1 : 0) +
+    1;
   report("done", fileCount, fileCount, `Đã xuất dự án: ${filename}`);
   return fileCount;
 }
-

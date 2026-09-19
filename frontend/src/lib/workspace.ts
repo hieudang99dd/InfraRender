@@ -1,7 +1,13 @@
 import type { RenderSettings } from "./render-settings";
 import type { OutputDetails } from "./api";
 
-export type StoredSource = { saved_name: string; url: string; name: string; size: string; resolution: string };
+export type StoredSource = {
+  saved_name: string;
+  url: string;
+  name: string;
+  size: string;
+  resolution: string;
+};
 
 export type PromptVersion = {
   id: string;

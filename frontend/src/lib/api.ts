@@ -1,7 +1,10 @@
 export function getBackendUrl() {
   const url = process.env.NEXT_PUBLIC_INFRARENDER_API_URL?.trim();
   if (url) return url.replace(/\/+$/, "");
-  if (typeof window !== "undefined" && !["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname))
+  if (
+    typeof window !== "undefined" &&
+    !["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)
+  )
     throw new Error("Chưa cấu hình địa chỉ backend cho website này.");
   return "http://127.0.0.1:8000";
 }
@@ -10,25 +13,41 @@ let accessToken = "";
 export function setAccessToken(token: string) {
   accessToken = token.trim();
   if (typeof window !== "undefined") {
-    try { sessionStorage.setItem(`infrarender.access:${getBackendUrl()}`, accessToken); } catch { /* memory still works */ }
+    try {
+      sessionStorage.setItem(`infrarender.access:${getBackendUrl()}`, accessToken);
+    } catch {
+      /* memory still works */
+    }
     window.dispatchEvent(new Event("infrarender-connection"));
   }
 }
 export function getAccessToken() {
   if (accessToken) return accessToken;
   if (typeof window !== "undefined") {
-    try { return sessionStorage.getItem(`infrarender.access:${getBackendUrl()}`) || ""; } catch { return ""; }
+    try {
+      return sessionStorage.getItem(`infrarender.access:${getBackendUrl()}`) || "";
+    } catch {
+      return "";
+    }
   }
   return "";
 }
 
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) { super(message); this.status = status; }
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
 }
 
 export type PromptMode = "template" | "refine" | "vision";
-export type PromptResponse = { prompt: string; mode: PromptMode; model: string | null; analysis: string[] };
+export type PromptResponse = {
+  prompt: string;
+  mode: PromptMode;
+  model: string | null;
+  analysis: string[];
+};
 
 export type HealthResponse = {
   status: string;
@@ -37,9 +56,25 @@ export type HealthResponse = {
   capabilities?: { upload: boolean; prompt_generation: boolean; image_generation: boolean };
 };
 
-export type UploadResponse = { status: string; original_name: string; saved_name: string; url: string; width: number; height: number; size_mb: number };
+export type UploadResponse = {
+  status: string;
+  original_name: string;
+  saved_name: string;
+  url: string;
+  width: number;
+  height: number;
+  size_mb: number;
+};
 
-export type OutputDetails = { native_size?: string; final_size?: string; provider_size?: string; upscaled?: boolean; cropped?: boolean; processing?: string; experimental?: boolean };
+export type OutputDetails = {
+  native_size?: string;
+  final_size?: string;
+  provider_size?: string;
+  upscaled?: boolean;
+  cropped?: boolean;
+  processing?: string;
+  experimental?: boolean;
+};
 
 export type RenderResponse = {
   status: "success";
@@ -67,7 +102,8 @@ export async function apiRequest<T>(
   options: RequestInit = {},
   timeoutMs = options.signal ? 30_000 : 10_000,
 ): Promise<T> {
-  if (!path.startsWith("/api/") || path.includes("\\") || path.includes("..")) throw new Error("Đường dẫn API không hợp lệ.");
+  if (!path.startsWith("/api/") || path.includes("\\") || path.includes(".."))
+    throw new Error("Đường dẫn API không hợp lệ.");
   const backend = getBackendUrl();
   const token = getAccessToken();
   const headers = token ? new Headers(options.headers) : options.headers;
@@ -105,15 +141,25 @@ export function uploadImage(file: File, signal: AbortSignal) {
 }
 
 export function requestRender(
-  request: { prompt: string; negative_prompt: string; reference_image_name: string; settings: object; project_name: string },
+  request: {
+    prompt: string;
+    negative_prompt: string;
+    reference_image_name: string;
+    settings: object;
+    project_name: string;
+  },
   signal: AbortSignal,
 ) {
-  return apiRequest<RenderResponse>("/api/render-image", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-    signal,
-  }, 210_000);
+  return apiRequest<RenderResponse>(
+    "/api/render-image",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+      signal,
+    },
+    210_000,
+  );
 }
 
 export function deleteFile(url: string) {

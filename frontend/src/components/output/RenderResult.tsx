@@ -16,7 +16,13 @@ import styles from "./RenderResult.module.css";
 import type { OutputDetails } from "@/lib/api";
 
 type RenderResultProps = {
-  result: { url: string; name: string; width?: number; height?: number; details?: OutputDetails } | null;
+  result: {
+    url: string;
+    name: string;
+    width?: number;
+    height?: number;
+    details?: OutputDetails;
+  } | null;
   isRendering: boolean;
   onRemove: () => void;
   onDownload: () => void;
@@ -103,9 +109,7 @@ export default function RenderResult({
                 className={styles.iconButton}
                 onClick={() => void toggleFullscreen()}
                 disabled={!fullscreen && (!result || hasImageError)}
-                aria-label={
-                  fullscreen ? "Thoát toàn màn hình" : "Xem phối cảnh toàn màn hình"
-                }
+                aria-label={fullscreen ? "Thoát toàn màn hình" : "Xem phối cảnh toàn màn hình"}
                 aria-pressed={fullscreen}
                 title={fullscreen ? "Thoát toàn màn hình (Esc)" : "Toàn màn hình"}
               >
@@ -201,7 +205,13 @@ export default function RenderResult({
           )
         )}
       </div>
-      {result?.details?.native_size && <p className="output-details">Ảnh AI: {result.details.native_size} → xuất: {result.width} × {result.height}{result.details.upscaled ? " · Đã phóng lớn, không phải độ phân giải AI gốc" : ""}{result.details.cropped ? " · Đã cắt giữa ảnh để đúng tỷ lệ" : ""}</p>}
+      {result?.details?.native_size && (
+        <p className="output-details">
+          Ảnh AI: {result.details.native_size} → xuất: {result.width} × {result.height}
+          {result.details.upscaled ? " · Đã phóng lớn, không phải độ phân giải AI gốc" : ""}
+          {result.details.cropped ? " · Đã cắt giữa ảnh để đúng tỷ lệ" : ""}
+        </p>
+      )}
     </section>
   );
 }

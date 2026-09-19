@@ -7,8 +7,10 @@ test("API rejects absolute URLs so access tokens cannot leave the backend", asyn
 });
 
 test("API errors retain status for conflict handling", async (context) => {
-  context.mock.method(globalThis, "fetch", async () => Response.json({ detail: "Conflict" }, {status:409}));
-  await assert.rejects(apiRequest("/api/projects/a"), error => error.status === 409);
+  context.mock.method(globalThis, "fetch", async () =>
+    Response.json({ detail: "Conflict" }, { status: 409 }),
+  );
+  await assert.rejects(apiRequest("/api/projects/a"), (error) => error.status === 409);
 });
 
 test("API requests preserve caller payload and propagate successful JSON", async (context) => {
@@ -99,11 +101,16 @@ test("render sends the reference and edited prompts without reapplying settings"
       width: 1024,
       height: 1024,
       provider: "OpenAI",
-      model: "gpt-image-2"
+      model: "gpt-image-2",
     });
   });
   const result = await requestRender(
-    { reference_image_name: "street.png", prompt: "My edited scene.", negative_prompt: "No billboards.", settings: {} },
+    {
+      reference_image_name: "street.png",
+      prompt: "My edited scene.",
+      negative_prompt: "No billboards.",
+      settings: {},
+    },
     new AbortController().signal,
   );
   assert.equal(result.url, "/outputs/test.png");
@@ -114,9 +121,11 @@ test("render configuration failure is readable and does not retry", async (conte
     Response.json({ detail: "Cha cu hAnh d<ch v render." }, { status: 503 }),
   );
   await assert.rejects(
-    requestRender({ reference_image_name: "test.png", prompt: "Scene", settings: {} }, new AbortController().signal),
+    requestRender(
+      { reference_image_name: "test.png", prompt: "Scene", settings: {} },
+      new AbortController().signal,
+    ),
     /Cha cu hAnh d<ch v render/,
   );
   assert.equal(mock.mock.callCount(), 1);
 });
-

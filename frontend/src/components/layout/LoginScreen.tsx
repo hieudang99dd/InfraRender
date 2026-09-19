@@ -43,7 +43,7 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
     }
     setError("");
     setLoading(true);
-    
+
     const basicHeader = `Basic ${btoa(`${user}:${pass}`)}`;
     setAccessToken(basicHeader);
 
@@ -53,7 +53,7 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
       onLoginSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Tài khoản hoặc mật khẩu không đúng.");
-      setAccessToken(""); 
+      setAccessToken("");
     } finally {
       setLoading(false);
     }
@@ -67,7 +67,7 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
             <Box size={40} strokeWidth={1.5} />
           </div>
           <div className="spinner"></div>
-          <p style={{ fontWeight: 500 }}>Đang kết nối Render Engine…</p>
+          <p className="login-connecting-text">Đang kết nối Render Engine…</p>
           {delayMessage && <p className="login-delay-msg">{delayMessage}</p>}
         </div>
       </div>
@@ -82,16 +82,18 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
         </div>
         <h1>InfraRender</h1>
         <p className="login-subtitle">Architectural & Infrastructure Rendering</p>
-        
+
         <h2 className="login-heading-small">Đăng nhập hệ thống</h2>
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label htmlFor="login-user" className="sr-only">Tài khoản</label>
+            <label htmlFor="login-user" className="sr-only">
+              Tài khoản
+            </label>
             <input
               id="login-user"
               type="text"
               value={user}
-              onChange={e => setUser(e.target.value)}
+              onChange={(e) => setUser(e.target.value)}
               disabled={loading}
               autoComplete="username"
               placeholder="Tên đăng nhập"
@@ -99,20 +101,22 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
             />
           </div>
           <div className="form-group">
-            <label htmlFor="login-pass" className="sr-only">Mật khẩu</label>
+            <label htmlFor="login-pass" className="sr-only">
+              Mật khẩu
+            </label>
             <div className="input-with-icon">
               <input
                 id="login-pass"
                 type={showPass ? "text" : "password"}
                 value={pass}
-                onChange={e => setPass(e.target.value)}
+                onChange={(e) => setPass(e.target.value)}
                 disabled={loading}
                 autoComplete="current-password"
                 placeholder="Mật khẩu"
               />
-              <button 
-                type="button" 
-                className="icon-btn" 
+              <button
+                type="button"
+                className="icon-btn"
                 onClick={() => setShowPass(!showPass)}
                 aria-label={showPass ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
               >
@@ -121,9 +125,17 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
             </div>
           </div>
 
-          {error && <p className="login-error" role="alert">{error}</p>}
-          
-          <button type="submit" className="button button-primary login-btn" disabled={loading} style={{ marginTop: '1rem' }}>
+          {error && (
+            <p className="login-error" role="alert">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            className="button button-primary login-btn retry-btn"
+            disabled={loading}
+          >
             {loading ? "Đang xử lý..." : "Đăng nhập"}
           </button>
         </form>

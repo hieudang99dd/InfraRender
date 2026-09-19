@@ -37,7 +37,10 @@ type PromptDockProps = {
 };
 
 export default function PromptDock({
-  promptMode, onPromptModeChange, analysis, model,
+  promptMode,
+  onPromptModeChange,
+  analysis,
+  model,
   prompt,
   onPromptChange,
   negativePrompt,
@@ -108,18 +111,40 @@ export default function PromptDock({
         </div>
       </div>
       <div className="prompt-content">
-        
         {/* PROMPT GENERATOR */}
-        <label className="field-label" htmlFor="prompt-engine">Phương thức tạo prompt</label>
-        <select id="prompt-engine" className="prompt-engine-select" value={promptMode} onChange={e=>onPromptModeChange(e.target.value as PromptMode)} disabled={isGenerating||isRendering}>
+        <label className="field-label" htmlFor="prompt-engine">
+          Phương thức tạo prompt
+        </label>
+        <select
+          id="prompt-engine"
+          className="prompt-engine-select"
+          value={promptMode}
+          onChange={(e) => onPromptModeChange(e.target.value as PromptMode)}
+          disabled={isGenerating || isRendering}
+        >
           <option value="template">Theo thiết lập — không gọi AI</option>
           <option value="refine">AI tinh chỉnh mô tả</option>
           <option value="vision">AI phân tích ảnh gốc</option>
         </select>
-        <p className="engine-help">{promptMode==="template"?"Ghép các lựa chọn thành Prompt tiếng Việt, không phân tích ảnh.":promptMode==="refine"?"AI tối ưu mô tả từ thiết lập. Yêu cầu có thể phát sinh phí API.":"AI đọc ảnh và nhận xét bố cục, kiến trúc, vật liệu, giao thông. Yêu cầu có thể phát sinh phí API."}</p>
-        
-        {analysis.length>0 && <details className="prompt-analysis"><summary>Nhận xét từ AI{model?` · ${model}`:""}</summary><ul>{analysis.map((item,index)=><li key={index}>{item}</li>)}</ul></details>}
-        
+        <p className="engine-help">
+          {promptMode === "template"
+            ? "Ghép các lựa chọn thành Prompt tiếng Việt, không phân tích ảnh."
+            : promptMode === "refine"
+              ? "AI tối ưu mô tả từ thiết lập. Yêu cầu có thể phát sinh phí API."
+              : "AI đọc ảnh và nhận xét bố cục, kiến trúc, vật liệu, giao thông. Yêu cầu có thể phát sinh phí API."}
+        </p>
+
+        {analysis.length > 0 && (
+          <details className="prompt-analysis">
+            <summary>Nhận xét từ AI{model ? ` · ${model}` : ""}</summary>
+            <ul>
+              {analysis.map((item, index) => (
+                <li key={index}>{item}</li>
+              ))}
+            </ul>
+          </details>
+        )}
+
         <label className="field-label" htmlFor="scene-notes">
           Ghi chú ý tưởng <span>Không bắt buộc</span>
         </label>
@@ -147,7 +172,13 @@ export default function PromptDock({
               onGenerate();
             }}
             disabled={!canGenerate || isGenerating || isRendering}
-            title={!canGenerate ? "Thêm ảnh tham chiếu để tạo prompt" : isRendering ? "Đang render ảnh..." : undefined}
+            title={
+              !canGenerate
+                ? "Thêm ảnh tham chiếu để tạo prompt"
+                : isRendering
+                  ? "Đang render ảnh..."
+                  : undefined
+            }
             aria-busy={isGenerating}
           >
             {isGenerating ? <LoaderCircle size={15} className="spin" /> : <Sparkles size={15} />}
@@ -231,7 +262,9 @@ export default function PromptDock({
             {isRendering
               ? "Tạm khóa khi đang render ảnh"
               : isGenerating
-                ? promptMode === "template" ? "Đang xử lý prompt…" : "AI đang xử lý yêu cầu…"
+                ? promptMode === "template"
+                  ? "Đang xử lý prompt…"
+                  : "AI đang xử lý yêu cầu…"
                 : mode === "prompt"
                   ? "Prompt phối cảnh · Có thể chỉnh sửa"
                   : "Những chi tiết cần tránh trong kết quả"}
@@ -243,7 +276,8 @@ export default function PromptDock({
         {isStale && (
           <p className="inline-message warning">
             <AlertCircle size={15} />
-            Ảnh hoặc thông số đã thay đổi. Bạn có thể chỉnh sửa prompt hoặc tạo lại trước khi render.
+            Ảnh hoặc thông số đã thay đổi. Bạn có thể chỉnh sửa prompt hoặc tạo lại trước khi
+            render.
           </p>
         )}
         {(error || copyError) && (
@@ -258,7 +292,7 @@ export default function PromptDock({
             {notice}
           </p>
         )}
-        
+
         <div className="promptSaveRow">
           <button
             type="button"
