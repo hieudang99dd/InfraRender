@@ -323,7 +323,6 @@
   }
 }
 
-
 .quickPresets {
   margin-bottom: 1.5rem;
 }
@@ -367,4 +366,8 @@
   background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.rangeLabelWithMargin {
+  margin-top: 16px;
 }

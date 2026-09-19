@@ -7,6 +7,9 @@ export type RenderSettings = {
   vegetation_density: string;
   buildings: string;
   buildings_density: string;
+  infrastructure: string;
+  roads: string;
+  materials: string;
   style: string;
   camera: string;
   quality: string;
@@ -70,6 +73,9 @@ export const DEFAULT_SETTINGS: RenderSettings = {
   vegetation_density: "",
   buildings: "",
   buildings_density: "",
+  infrastructure: "",
+  roads: "",
+  materials: "",
   style: "",
   camera: "",
   quality: "",
@@ -98,6 +104,9 @@ export function isDefaultRenderSettings(settings: RenderSettings): boolean {
     settings.vegetation_density === DEFAULT_SETTINGS.vegetation_density &&
     settings.buildings === DEFAULT_SETTINGS.buildings &&
     settings.buildings_density === DEFAULT_SETTINGS.buildings_density &&
+    settings.infrastructure === DEFAULT_SETTINGS.infrastructure &&
+    settings.roads === DEFAULT_SETTINGS.roads &&
+    settings.materials === DEFAULT_SETTINGS.materials &&
     settings.style === DEFAULT_SETTINGS.style &&
     settings.camera === DEFAULT_SETTINGS.camera &&
     settings.quality === DEFAULT_SETTINGS.quality &&
@@ -111,7 +120,10 @@ export function isDefaultRenderSettings(settings: RenderSettings): boolean {
 
 export function getOutputSummary(settings: RenderSettings): string {
   const quality = !settings.quality || settings.quality === "Original" ? "Gốc" : settings.quality;
-  const ratio = !settings.aspect_ratio || settings.aspect_ratio === "Original" ? "Tỷ lệ gốc" : settings.aspect_ratio;
+  const ratio =
+    !settings.aspect_ratio || settings.aspect_ratio === "Original"
+      ? "Tỷ lệ gốc"
+      : settings.aspect_ratio;
   return `${quality} · ${ratio}`;
 }
 

@@ -179,13 +179,22 @@ test("legacy state retained during hot reload still builds a request without key
 test("isDefaultRenderSettings detects default vs custom", () => {
   assert.equal(isDefaultRenderSettings(DEFAULT_SETTINGS), true);
   assert.equal(isDefaultRenderSettings({ ...DEFAULT_SETTINGS }), true);
-  assert.equal(isDefaultRenderSettings({ ...DEFAULT_SETTINGS, weather: WEATHER_VALUES.sunny }), false);
+  assert.equal(
+    isDefaultRenderSettings({ ...DEFAULT_SETTINGS, weather: WEATHER_VALUES.sunny }),
+    false,
+  );
   assert.equal(isDefaultRenderSettings({ ...DEFAULT_SETTINGS, custom_keywords: ["hi"] }), false);
 });
 
 test("getOutputSummary formats correctly", () => {
   assert.equal(getOutputSummary({ ...DEFAULT_SETTINGS }), "Gốc · Tỷ lệ gốc");
-  assert.equal(getOutputSummary({ ...DEFAULT_SETTINGS, quality: "Original", aspect_ratio: "Original" }), "Gốc · Tỷ lệ gốc");
-  assert.equal(getOutputSummary({ ...DEFAULT_SETTINGS, quality: "4K", aspect_ratio: "16:9" }), "4K · 16:9");
+  assert.equal(
+    getOutputSummary({ ...DEFAULT_SETTINGS, quality: "Original", aspect_ratio: "Original" }),
+    "Gốc · Tỷ lệ gốc",
+  );
+  assert.equal(
+    getOutputSummary({ ...DEFAULT_SETTINGS, quality: "4K", aspect_ratio: "16:9" }),
+    "4K · 16:9",
+  );
   assert.equal(getOutputSummary({ ...DEFAULT_SETTINGS, quality: "2K" }), "2K · Tỷ lệ gốc");
 });

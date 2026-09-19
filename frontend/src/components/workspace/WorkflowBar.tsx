@@ -3,6 +3,8 @@ import { Sparkles, WandSparkles, RefreshCw, AlertTriangle } from "lucide-react";
 
 type Props = {
   hasSource: boolean;
+  isUploading: boolean;
+  hasUploadedSource: boolean;
   hasPrompt: boolean;
   isGenerating: boolean;
   isRendering: boolean;
@@ -20,6 +22,8 @@ type Props = {
 
 export default function WorkflowBar({
   hasSource,
+  isUploading,
+  hasUploadedSource,
   hasPrompt,
   isGenerating,
   isRendering,
@@ -32,7 +36,7 @@ export default function WorkflowBar({
   renderChecking,
   renderConfigured,
   renderReady,
-  onRefreshEngine
+  onRefreshEngine,
 }: Props) {
   let engineClass = styles.engineUnavailable;
   let engineText = "Render Engine chưa cấu hình";
@@ -47,22 +51,46 @@ export default function WorkflowBar({
     engineText = "Render Engine đã cấu hình";
   }
 
-  const renderDisabledReason = isRendering ? "Đang render ảnh" : isGenerating ? "Đang xử lý prompt" : !hasSource ? "Thêm ảnh gốc trước" : !hasPrompt ? "Cần có prompt" : !renderConfigured ? "Render Engine chưa cấu hình" : undefined;
-  const generateDisabledReason = isGenerating ? "Đang xử lý prompt" : isRendering ? "Đang render ảnh" : !hasSource ? "Thêm ảnh gốc trước" : undefined;
+  const renderDisabledReason = isRendering
+    ? "Đang render ảnh"
+    : isGenerating
+      ? "Đang xử lý prompt"
+      : isUploading
+        ? "Đang tải ảnh lên…"
+        : !hasSource
+          ? "Chưa có ảnh gốc"
+          : !hasUploadedSource
+            ? "Ảnh chưa tải xong"
+            : !hasPrompt
+              ? "Chưa có prompt"
+              : !renderConfigured
+                ? "Render Engine chưa cấu hình"
+                : undefined;
+  const generateDisabledReason = isGenerating
+    ? "Đang xử lý prompt"
+    : isRendering
+      ? "Đang render ảnh"
+      : isUploading
+        ? "Đang tải ảnh lên…"
+        : !hasSource
+          ? "Chưa có ảnh gốc"
+          : !hasUploadedSource
+            ? "Ảnh chưa tải xong"
+            : undefined;
 
   return (
     <div className={styles.bar}>
       <div className={styles.statusGroup}>
         <div className={`${styles.statusItem} ${hasSource ? styles.success : styles.muted}`}>
-          <div className={styles.dot}></div>
-          <span>Ảnh gốc</span>
+          <span className={styles.dot} aria-hidden="true"></span>
+          <span>{isUploading ? "Đang tải ảnh lên..." : "Ảnh gốc"}</span>
         </div>
         <div className={`${styles.statusItem} ${isSettingsCustom ? styles.custom : styles.muted}`}>
-          <div className={styles.dot}></div>
+          <span className={styles.dot} aria-hidden="true"></span>
           <span>Thiết lập: {isSettingsCustom ? "Đã tùy chỉnh" : "Mặc định"}</span>
         </div>
         <div className={`${styles.statusItem} ${hasPrompt ? styles.success : styles.muted}`}>
-          <div className={styles.dot}></div>
+          <span className={styles.dot} aria-hidden="true"></span>
           <span>Prompt</span>
         </div>
         <div className={styles.outputSummary}>
@@ -73,14 +101,20 @@ export default function WorkflowBar({
       <div className={styles.actions}>
         <div className={styles.engineStatus}>
           <span className={`${styles.engineText} ${engineClass}`}>
-            {!renderChecking && !renderReady && !renderConfigured && <AlertTriangle size={13} style={{ marginRight: "4px", verticalAlign: "text-bottom" }} />}
-            <div className={styles.dot}></div>
+            {!renderChecking && !renderReady && !renderConfigured && (
+              <AlertTriangle size={13} className={styles.engineWarningIcon} />
+            )}
+            <span className={styles.dot} aria-hidden="true"></span>
             {engineText}
           </span>
           {!renderChecking && (!renderConfigured || !renderReady) && (
-             <button className={styles.refreshEngineBtn} onClick={onRefreshEngine} title="Kiểm tra lại">
-                <RefreshCw size={13} /> Kiểm tra lại
-             </button>
+            <button
+              className={styles.refreshEngineBtn}
+              onClick={onRefreshEngine}
+              title="Kiểm tra lại"
+            >
+              <RefreshCw size={13} /> Kiểm tra lại
+            </button>
           )}
         </div>
 
@@ -91,9 +125,9 @@ export default function WorkflowBar({
           title={generateDisabledReason}
         >
           <Sparkles size={16} />
-          <span>{isGenerating ? "Đang xử lý…" : (hasPrompt ? "Cập nhật prompt" : "Tạo prompt")}</span>
+          <span>{isGenerating ? "Đang xử lý…" : hasPrompt ? "Cập nhật prompt" : "Tạo prompt"}</span>
         </button>
-        
+
         <button
           className="button button-primary"
           disabled={!canRender || isGenerating || isRendering}

@@ -58,6 +58,25 @@ const DENSITY_OPTIONS: Option[] = [
 ];
 
 const OPTIONS: Record<ChoiceField, Option[]> = {
+  infrastructure: [
+    { label: "Biển báo và đèn giao thông", value: "traffic signs and traffic lights" },
+    { label: "Cột đèn chiếu sáng", value: "street lighting poles" },
+    { label: "Vỉa hè và lối đi bộ", value: "sidewalks and pedestrian paths" },
+    { label: "Dải phân cách", value: "median strips and barriers" },
+  ],
+  roads: [
+    { label: "Đường nhựa (Asphalt)", value: "asphalt road surface" },
+    { label: "Đường bê tông", value: "concrete road surface" },
+    { label: "Đường lát gạch", value: "paved stone road" },
+    { label: "Đường đất", value: "dirt road" },
+  ],
+  materials: [
+    { label: "Kính và Thép hiện đại", value: "modern glass and steel materials" },
+    { label: "Bê tông trần (Brutalism)", value: "exposed raw concrete" },
+    { label: "Gạch đỏ truyền thống", value: "traditional red brick walls" },
+    { label: "Gỗ tự nhiên", value: "natural wood finishes" },
+    { label: "Đá ốp lát", value: "stone cladding" },
+  ],
   weather: [
     { label: "Nắng", value: WEATHER_VALUES.sunny, icon: <Sun size={14} /> },
     { label: "Có mây", value: WEATHER_VALUES.cloudy, icon: <Cloud size={14} /> },
@@ -157,7 +176,6 @@ function PreservationChoice({
   );
 }
 
-
 const QUICK_PRESETS = [
   {
     id: "hien_trang",
@@ -168,14 +186,14 @@ const QUICK_PRESETS = [
       preserve_road_markings: true,
       camera: "preserve the original camera perspective",
       creativity: 1,
-      style: "photorealistic visualization"
+      style: "photorealistic visualization",
     }),
-    matches: (settings: RenderSettings) => 
+    matches: (settings: RenderSettings) =>
       settings.preserve_geometry === true &&
       settings.preserve_road_markings === true &&
       settings.camera === "preserve the original camera perspective" &&
       settings.creativity === 1 &&
-      settings.style === "photorealistic visualization"
+      settings.style === "photorealistic visualization",
   },
   {
     id: "ban_ngay",
@@ -184,12 +202,12 @@ const QUICK_PRESETS = [
       ...settings,
       weather: WEATHER_VALUES.sunny,
       lighting: LIGHTING_VALUES.natural,
-      style: "photorealistic visualization"
+      style: "photorealistic visualization",
     }),
-    matches: (settings: RenderSettings) => 
+    matches: (settings: RenderSettings) =>
       settings.weather === WEATHER_VALUES.sunny &&
       settings.lighting === LIGHTING_VALUES.natural &&
-      settings.style === "photorealistic visualization"
+      settings.style === "photorealistic visualization",
   },
   {
     id: "hoang_hon",
@@ -198,12 +216,12 @@ const QUICK_PRESETS = [
       ...settings,
       weather: WEATHER_VALUES.sunset,
       lighting: LIGHTING_VALUES.golden,
-      style: "photorealistic visualization"
+      style: "photorealistic visualization",
     }),
-    matches: (settings: RenderSettings) => 
+    matches: (settings: RenderSettings) =>
       settings.weather === WEATHER_VALUES.sunset &&
       settings.lighting === LIGHTING_VALUES.golden &&
-      settings.style === "photorealistic visualization"
+      settings.style === "photorealistic visualization",
   },
   {
     id: "ban_dem",
@@ -212,12 +230,12 @@ const QUICK_PRESETS = [
       ...settings,
       weather: WEATHER_VALUES.night,
       lighting: LIGHTING_VALUES.night,
-      style: "photorealistic visualization"
+      style: "photorealistic visualization",
     }),
-    matches: (settings: RenderSettings) => 
+    matches: (settings: RenderSettings) =>
       settings.weather === WEATHER_VALUES.night &&
       settings.lighting === LIGHTING_VALUES.night &&
-      settings.style === "photorealistic visualization"
+      settings.style === "photorealistic visualization",
   },
   {
     id: "canh_quan",
@@ -226,13 +244,13 @@ const QUICK_PRESETS = [
       ...settings,
       vegetation: "urban landscape planting",
       vegetation_density: "dense",
-      style: "photorealistic visualization"
+      style: "photorealistic visualization",
     }),
-    matches: (settings: RenderSettings) => 
+    matches: (settings: RenderSettings) =>
       settings.vegetation === "urban landscape planting" &&
       settings.vegetation_density === "dense" &&
-      settings.style === "photorealistic visualization"
-  }
+      settings.style === "photorealistic visualization",
+  },
 ];
 
 export default function RightPanel({
@@ -354,7 +372,7 @@ export default function RightPanel({
             value={settings.preserve_road_markings}
             onChange={(value) => update("preserve_road_markings", value)}
           />
-          <div className={styles.rangeLabel} style={{ marginTop: '16px' }}>
+          <div className={`${styles.rangeLabel} ${styles.rangeLabelWithMargin}`}>
             <label htmlFor={`${id}-creativity`}>Mức độ tự do sáng tạo (%)</label>
             <button
               type="button"
@@ -427,6 +445,8 @@ export default function RightPanel({
           {choices("buildings", "Loại công trình")}
           <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ công trình</p>
           {choices("buildings_density", "Mật độ công trình")}
+          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Hạ tầng bổ sung</p>
+          {choices("infrastructure", "Hạ tầng bổ sung")}
         </SettingSection>
 
         {/* 04. Giao thông */}
@@ -435,6 +455,8 @@ export default function RightPanel({
           {choices("vehicles", "Loại phương tiện")}
           <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ phương tiện</p>
           {choices("vehicles_density", "Mật độ phương tiện")}
+          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mặt đường</p>
+          {choices("roads", "Mặt đường")}
         </SettingSection>
 
         {/* 05. Cây xanh */}
@@ -456,6 +478,8 @@ export default function RightPanel({
         {/* 07. Phong cách */}
         <SettingSection title="Phong cách" icon={<Palette size={17} />}>
           {choices("style", "Phong cách")}
+          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Vật liệu chủ đạo</p>
+          {choices("materials", "Vật liệu chủ đạo")}
         </SettingSection>
 
         {/* 08. Đầu ra */}
@@ -538,7 +562,7 @@ export default function RightPanel({
           {isRendering
             ? "Bạn có thể điều chỉnh thông số sau khi dựng xong."
             : canGenerate
-              ? "Sẵn sàng. Chuyển sang Soạn chỉ dẫn để tạo và dựng phối cảnh."
+              ? "Sẵn sàng tạo prompt và render ảnh."
               : "Thêm ảnh hiện trạng để bắt đầu."}
         </p>
       </footer>
