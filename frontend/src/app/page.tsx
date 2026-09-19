@@ -150,6 +150,11 @@ export default function Home() {
           canRender={Boolean(workspace.source && "saved_name" in workspace.source) && !workspace.isUploading && Boolean(workspace.prompt.trim()) && Boolean(renderService.service?.configured)}
           onGenerate={workspace.generatePrompt}
           onRender={workspace.renderImage}
+          isSettingsCustom={workspace.settings.preserve_geometry !== true || workspace.settings.camera !== "preserve the original camera perspective" || workspace.settings.creativity !== 1}
+          outputSummary={workspace.settings.quality === "Original" ? "Kích thước ảnh gốc" : `Kích thước: ${workspace.settings.quality} (${workspace.settings.aspect_ratio})`}
+          renderChecking={renderService.checking}
+          renderConfigured={Boolean(renderService.service?.configured)}
+          onRefreshEngine={renderService.refresh}
         />
       </div>
       </fieldset>

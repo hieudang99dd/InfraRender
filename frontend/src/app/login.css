@@ -171,3 +171,8 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+.login-brand { display: flex; justify-content: center; margin-bottom: 1rem; }
+.login-box:not(.checking) .login-brand { color: var(--foreground); }
+.login-box.checking .login-brand { color: var(--accent); }
+.login-delay-msg { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; text-align: center; }

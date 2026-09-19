@@ -7,7 +7,6 @@ import {
   CloudRain,
   CloudSun,
   Leaf,
-  Lightbulb,
   Moon,
   Palette,
   Plus,
@@ -166,9 +165,17 @@ const QUICK_PRESETS = [
     apply: (settings: RenderSettings): RenderSettings => ({
       ...settings,
       preserve_geometry: true,
+      preserve_road_markings: true,
+      camera: "preserve the original camera perspective",
       creativity: 1,
       style: "photorealistic visualization"
-    })
+    }),
+    matches: (settings: RenderSettings) => 
+      settings.preserve_geometry === true &&
+      settings.preserve_road_markings === true &&
+      settings.camera === "preserve the original camera perspective" &&
+      settings.creativity === 1 &&
+      settings.style === "photorealistic visualization"
   },
   {
     id: "ban_ngay",
@@ -178,7 +185,11 @@ const QUICK_PRESETS = [
       weather: WEATHER_VALUES.sunny,
       lighting: LIGHTING_VALUES.natural,
       style: "photorealistic visualization"
-    })
+    }),
+    matches: (settings: RenderSettings) => 
+      settings.weather === WEATHER_VALUES.sunny &&
+      settings.lighting === LIGHTING_VALUES.natural &&
+      settings.style === "photorealistic visualization"
   },
   {
     id: "hoang_hon",
@@ -188,7 +199,11 @@ const QUICK_PRESETS = [
       weather: WEATHER_VALUES.sunset,
       lighting: LIGHTING_VALUES.golden,
       style: "photorealistic visualization"
-    })
+    }),
+    matches: (settings: RenderSettings) => 
+      settings.weather === WEATHER_VALUES.sunset &&
+      settings.lighting === LIGHTING_VALUES.golden &&
+      settings.style === "photorealistic visualization"
   },
   {
     id: "ban_dem",
@@ -198,17 +213,25 @@ const QUICK_PRESETS = [
       weather: WEATHER_VALUES.night,
       lighting: LIGHTING_VALUES.night,
       style: "photorealistic visualization"
-    })
+    }),
+    matches: (settings: RenderSettings) => 
+      settings.weather === WEATHER_VALUES.night &&
+      settings.lighting === LIGHTING_VALUES.night &&
+      settings.style === "photorealistic visualization"
   },
   {
     id: "canh_quan",
-    label: "Cảnh quan xanh",
+    label: "Cảnh quan đô thị",
     apply: (settings: RenderSettings): RenderSettings => ({
       ...settings,
-      vegetation: "tropical vegetation",
+      vegetation: "urban landscape planting",
       vegetation_density: "dense",
       style: "photorealistic visualization"
-    })
+    }),
+    matches: (settings: RenderSettings) => 
+      settings.vegetation === "urban landscape planting" &&
+      settings.vegetation_density === "dense" &&
+      settings.style === "photorealistic visualization"
   }
 ];
 
@@ -292,40 +315,167 @@ export default function RightPanel({
       </header>
 
       <fieldset className={styles.settings} disabled={isBusy} aria-label="Thông số thiết kế">
-        
-          <div className={styles.quickPresets}>
-            <p className={styles.presetLabel}>Preset nhanh</p>
-            <div className={styles.presetList}>
-              {QUICK_PRESETS.map(preset => (
+        <div className={styles.quickPresets}>
+          <p className={styles.presetLabel}>
+            Preset nhanh
+            {!QUICK_PRESETS.some((p) => p.matches(settings)) && " (Đã tùy chỉnh)"}
+          </p>
+          <div className={styles.presetList}>
+            {QUICK_PRESETS.map((preset) => {
+              const isActive = preset.matches(settings);
+              return (
                 <button
                   key={preset.id}
                   type="button"
-                  className={styles.presetChip}
+                  className={`${styles.presetChip} ${isActive ? styles.active : ""}`}
+                  aria-pressed={isActive}
                   disabled={isBusy}
                   onClick={() => onChange(preset.apply(settings))}
                   title={`Áp dụng preset: ${preset.label}`}
                 >
                   {preset.label}
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
-          <p className={styles.selectionHint}>
-
+        </div>
+        <p className={styles.selectionHint}>
           Chọn thông số hoặc thêm từ khóa riêng. Nhấn lại một lựa chọn để bỏ chọn.
         </p>
-        <SettingSection
-          title="Từ khóa bổ sung"
-          icon={<Tags size={17} />}
-          defaultOpen
-        >
+
+        {/* 01. Mức độ can thiệp */}
+        <SettingSection title="Mức độ can thiệp" icon={<ShieldCheck size={17} />} defaultOpen>
+          <PreservationChoice
+            label="Bảo toàn hình khối công trình"
+            value={settings.preserve_geometry}
+            onChange={(value) => update("preserve_geometry", value)}
+          />
+          <PreservationChoice
+            label="Giữ vạch sơn mặt đường"
+            value={settings.preserve_road_markings}
+            onChange={(value) => update("preserve_road_markings", value)}
+          />
+          <div className={styles.rangeLabel} style={{ marginTop: '16px' }}>
+            <label htmlFor={`${id}-creativity`}>Mức độ tự do sáng tạo (%)</label>
+            <button
+              type="button"
+              className={styles.clear}
+              aria-label="Bỏ chọn tự do sáng tạo"
+              disabled={settings.creativity === null}
+              onClick={() => update("creativity", null)}
+            >
+              Bỏ chọn
+            </button>
+          </div>
+          <input
+            id={`${id}-creativity`}
+            className={styles.select}
+            type="number"
+            min={0}
+            max={100}
+            step={1}
+            placeholder="Chưa chọn"
+            value={settings.creativity ?? ""}
+            onChange={(event) => {
+              const value = event.target.valueAsNumber;
+              update(
+                "creativity",
+                Number.isFinite(value) ? Math.min(100, Math.max(0, Math.round(value))) : null,
+              );
+            }}
+          />
+          {settings.creativity !== null && (
+            <>
+              <input
+                className={styles.range}
+                type="range"
+                aria-label="Điều chỉnh mức độ tự do sáng tạo"
+                min={0}
+                max={100}
+                step={1}
+                value={settings.creativity}
+                onChange={(event) => update("creativity", Number(event.target.value))}
+              />
+              <div className={styles.rangeHints}>
+                <span>Bám sát ảnh gốc</span>
+                <span>Tự do sáng tạo</span>
+              </div>
+            </>
+          )}
+        </SettingSection>
+
+        {/* 02. Góc nhìn */}
+        <SettingSection title="Góc nhìn" icon={<Camera size={17} />}>
+          <select
+            id={`${id}-camera`}
+            className={styles.select}
+            data-empty={!settings.camera}
+            value={settings.camera}
+            onChange={(event) => update("camera", event.target.value)}
+          >
+            <option value="">Chưa chọn</option>
+            {OPTIONS.camera.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </SettingSection>
+
+        {/* 03. Công trình & hạ tầng */}
+        <SettingSection title="Công trình & hạ tầng" icon={<Building2 size={17} />}>
+          <p className={styles.fieldLabel}>Loại công trình</p>
+          {choices("buildings", "Loại công trình")}
+          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ công trình</p>
+          {choices("buildings_density", "Mật độ công trình")}
+        </SettingSection>
+
+        {/* 04. Giao thông */}
+        <SettingSection title="Giao thông" icon={<Route size={17} />}>
+          <p className={styles.fieldLabel}>Loại phương tiện</p>
+          {choices("vehicles", "Loại phương tiện")}
+          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ phương tiện</p>
+          {choices("vehicles_density", "Mật độ phương tiện")}
+        </SettingSection>
+
+        {/* 05. Cây xanh */}
+        <SettingSection title="Cây xanh" icon={<Leaf size={17} />}>
+          <p className={styles.fieldLabel}>Loại thảm thực vật</p>
+          {choices("vegetation", "Loại thảm thực vật")}
+          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ phủ xanh</p>
+          {choices("vegetation_density", "Mật độ phủ xanh")}
+        </SettingSection>
+
+        {/* 06. Thời tiết & ánh sáng */}
+        <SettingSection title="Thời tiết & ánh sáng" icon={<CloudSun size={17} />}>
+          <p className={styles.fieldLabel}>Thời tiết</p>
+          {choices("weather", "Thời tiết", true)}
+          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Ánh sáng</p>
+          {choices("lighting", "Ánh sáng")}
+        </SettingSection>
+
+        {/* 07. Phong cách */}
+        <SettingSection title="Phong cách" icon={<Palette size={17} />}>
+          {choices("style", "Phong cách")}
+        </SettingSection>
+
+        {/* 08. Đầu ra */}
+        <SettingSection title="Đầu ra" icon={<SlidersHorizontal size={17} />}>
+          <p className={styles.fieldLabel}>Độ phân giải</p>
+          {choices("quality", "Độ phân giải", true)}
+          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Tỷ lệ khung hình</p>
+          {choices("aspect_ratio", "Tỷ lệ khung hình", true)}
+        </SettingSection>
+
+        {/* 09. Yêu cầu bổ sung */}
+        <SettingSection title="Yêu cầu bổ sung" icon={<Tags size={17} />}>
           <div className={styles.keywordEntry}>
             <input
               ref={keywordInput}
               id={`${id}-keyword`}
               className={styles.select}
               type="text"
-              placeholder="Ví dụ: nút giao khác mức, dải phân cách cứng"
+              placeholder="Ví dụ: tường gạch đỏ, biển báo..."
               value={keywordDraft}
               aria-invalid={Boolean(keywordError)}
               aria-describedby={keywordError ? `${id}-keyword-error` : undefined}
@@ -381,122 +531,6 @@ export default function RightPanel({
           <p className={styles.keywordCount} role="status" aria-live="polite" aria-atomic="true">
             {customKeywords.length}/{MAX_CUSTOM_KEYWORDS} từ khóa đã thêm
           </p>
-        </SettingSection>
-        <SettingSection title="Thời tiết & khí hậu" icon={<CloudSun size={17} />} defaultOpen>
-          {choices("weather", "Thời tiết & khí hậu", true)}
-        </SettingSection>
-        <SettingSection title="Ánh sáng" icon={<Lightbulb size={17} />}>
-          {choices("lighting", "Ánh sáng")}
-        </SettingSection>
-        <SettingSection title="Cây xanh & cảnh quan" icon={<Leaf size={17} />}>
-          <p className={styles.fieldLabel}>Loại thảm thực vật</p>
-          {choices("vegetation", "Loại thảm thực vật")}
-          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ phủ xanh</p>
-          {choices("vegetation_density", "Mật độ phủ xanh")}
-        </SettingSection>
-        <SettingSection title="Giao thông & phương tiện" icon={<Route size={17} />}>
-          <p className={styles.fieldLabel}>Loại phương tiện</p>
-          {choices("vehicles", "Loại phương tiện")}
-          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ phương tiện</p>
-          {choices("vehicles_density", "Mật độ phương tiện")}
-          <PreservationChoice
-            label="Vạch sơn mặt đường"
-            value={settings.preserve_road_markings}
-            onChange={(value) => update("preserve_road_markings", value)}
-          />
-        </SettingSection>
-        <SettingSection title="Công trình kiến trúc" icon={<Building2 size={17} />}>
-          <p className={styles.fieldLabel}>Loại công trình</p>
-          {choices("buildings", "Loại công trình")}
-          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Mật độ công trình</p>
-          {choices("buildings_density", "Mật độ công trình")}
-        </SettingSection>
-        <SettingSection title="Phong cách hình ảnh" icon={<Palette size={17} />}>
-          {choices("style", "Phong cách hình ảnh")}
-        </SettingSection>
-        <SettingSection title="Bảo toàn hình học & Sáng tạo" icon={<ShieldCheck size={17} />}>
-          <p className={styles.fieldLabel}>Mức độ sáng tạo sẽ định hướng Chỉ thị AI; không gửi trực tiếp dưới dạng tham số API gốc.</p>
-          <PreservationChoice
-            label="Bảo toàn hình khối công trình"
-            value={settings.preserve_geometry}
-            onChange={(value) => update("preserve_geometry", value)}
-          />
-          <div className={styles.rangeLabel}>
-            <label htmlFor={`${id}-creativity`}>Mức độ tự do sáng tạo (%)</label>
-            <button
-              type="button"
-              className={styles.clear}
-              aria-label="Bỏ chọn tự do sáng tạo"
-              disabled={settings.creativity === null}
-              onClick={() => update("creativity", null)}
-            >
-              Bỏ chọn
-            </button>
-          </div>
-          <input
-            id={`${id}-creativity`}
-            className={styles.select}
-            type="number"
-            min={0}
-            max={100}
-            step={1}
-            placeholder="Chưa chọn"
-            value={settings.creativity ?? ""}
-            onChange={(event) => {
-              const value = event.target.valueAsNumber;
-              update(
-                "creativity",
-                Number.isFinite(value) ? Math.min(100, Math.max(0, Math.round(value))) : null,
-              );
-            }}
-          />
-          {settings.creativity !== null && (
-            <>
-              <input
-                className={styles.range}
-                type="range"
-                aria-label="Điều chỉnh mức độ tự do sáng tạo"
-                min={0}
-                max={100}
-                step={1}
-                value={settings.creativity}
-                onChange={(event) => update("creativity", Number(event.target.value))}
-              />
-              <div className={styles.rangeHints}>
-                <span>Bám sát ảnh gốc</span>
-                <span>Tự do sáng tạo</span>
-              </div>
-            </>
-          )}
-        </SettingSection>
-        <SettingSection title="Góc nhìn & Phối cảnh" icon={<Camera size={17} />}>
-          <label className={styles.fieldLabel} htmlFor={`${id}-camera`}>
-            Góc máy mong muốn
-          </label>
-          <select
-            id={`${id}-camera`}
-            className={styles.select}
-            data-empty={!settings.camera}
-            value={settings.camera}
-            onChange={(event) => update("camera", event.target.value)}
-          >
-            <option value="">Chưa chọn</option>
-            {OPTIONS.camera.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </SettingSection>
-        <SettingSection
-          title="Thông số kết xuất"
-          icon={<SlidersHorizontal size={17} />}
-          description="Áp dụng kích thước tệp thật: 1K cạnh dài 1024, 2K 2560, 4K 3840, 8K 7680 px. Có thể cắt giữa ảnh và phóng lớn; kết quả sẽ ghi rõ. 8K vuông vượt giới hạn 40 MP."
-        >
-          <p className={styles.fieldLabel}>Độ phân giải</p>
-          {choices("quality", "Độ phân giải", true)}
-          <p className={`${styles.fieldLabel} ${styles.spacedLabel}`}>Tỷ lệ khung hình</p>
-          {choices("aspect_ratio", "Tỷ lệ khung hình", true)}
         </SettingSection>
       </fieldset>
 

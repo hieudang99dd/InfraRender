@@ -11,12 +11,13 @@ type HeaderProps = {
 export default function Header({ workspace: w }: HeaderProps) {
   const busy = w.isGenerating || w.isRendering || w.isUploading || w.saving || !w.isLoaded;
   const hasData = Boolean(w.source || w.renderVersions.length > 0 || w.prompt.trim());
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const projectMenuRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const [localName, setLocalName] = useState(w.projectName);
   const [isEditingName, setIsEditingName] = useState(false);
-
 
   const commitName = () => {
     const finalName = localName.trim() || "Dự án chưa đặt tên";
@@ -39,11 +40,17 @@ export default function Header({ workspace: w }: HeaderProps) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setMenuOpen(false);
       }
+      if (projectMenuRef.current && !projectMenuRef.current.contains(event.target as Node)) {
+        setProjectMenuOpen(false);
+      }
     }
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        setProjectMenuOpen(false);
+      }
     }
-    if (menuOpen) {
+    if (menuOpen || projectMenuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       document.addEventListener("keydown", handleKeyDown);
     }
@@ -51,21 +58,21 @@ export default function Header({ workspace: w }: HeaderProps) {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [menuOpen]);
+  }, [menuOpen, projectMenuOpen]);
 
   return (
     <header className={styles.header}>
       <div className={styles.left}>
-        <a className="brand" href="#workspace" aria-label="InfraRender">
-          <span className="brand-mark">
+        <a className={styles.brand} href="#workspace" aria-label="InfraRender">
+          <span className={styles.brandMark}>
             <Box size={23} strokeWidth={1.6} />
           </span>
-          <span className="brand-name">
+          <span className={styles.brandName}>
             InfraRender<span>BY HIEU.DV</span>
           </span>
         </a>
 
-        <div className={styles.projectSelector}>
+        <div className={styles.projectSelector} ref={projectMenuRef}>
           <div className={styles.projectNameField}>
             <input
               className={styles.projectInput}
@@ -75,6 +82,9 @@ export default function Header({ workspace: w }: HeaderProps) {
               onChange={(event) => {
                 setIsEditingName(true);
                 setLocalName(event.target.value);
+              }}
+              onBlur={() => {
+                if (isEditingName) commitName();
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -104,38 +114,78 @@ export default function Header({ workspace: w }: HeaderProps) {
           
           <div className={styles.divider}></div>
           
-          <div className={styles.dropdownWrapper}>
-            <select 
-              className={styles.dropdownSelect}
-              title="Danh sách dự án đã lưu"
-              value={w.projectId || ""} 
-              disabled={busy} 
-              onChange={e => { if(e.target.value) void w.switchProject(e.target.value); }}
-            >
-              {!w.projectId && <option value="">-- Bản nháp mới --</option>}
-              {w.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <ChevronDown size={16} color="var(--muted)" style={{ pointerEvents: 'none' }} />
-          </div>
+          <button 
+            className={styles.projectDropdownButton} 
+            onClick={() => setProjectMenuOpen(!projectMenuOpen)}
+            aria-haspopup="menu"
+            aria-expanded={projectMenuOpen}
+            title="Danh sách dự án"
+          >
+            <ChevronDown size={16} />
+          </button>
+
+          {projectMenuOpen && (
+            <div className={styles.projectDropdown} role="menu">
+              {!w.projectId && (
+                <button className={styles.menuItem} role="menuitem" disabled>
+                  <Check size={14} style={{ visibility: "visible" }} />
+                  <span>-- Bản nháp mới --</span>
+                </button>
+              )}
+              {w.projects.map(p => {
+                const isActive = p.id === w.projectId;
+                return (
+                  <button 
+                    key={p.id} 
+                    className={styles.menuItem}
+                    role="menuitem"
+                    disabled={busy}
+                    onClick={() => {
+                      setProjectMenuOpen(false);
+                      if (!isActive) void w.switchProject(p.id);
+                    }}
+                  >
+                    <Check size={14} style={{ visibility: isActive ? "visible" : "hidden" }} />
+                    <span style={{ fontWeight: isActive ? 600 : 400 }}>{p.name}</span>
+                  </button>
+                );
+              })}
+              <div className={styles.projectDropdownDivider}></div>
+              <button 
+                className={styles.menuItem}
+                role="menuitem"
+                disabled={busy}
+                onClick={() => {
+                  setProjectMenuOpen(false);
+                  w.resetProject();
+                }}
+              >
+                <FilePlus size={14} style={{ visibility: "hidden" }} />
+                <span>+ Dự án mới</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       <div className={styles.actions}>
         {w.saveError && (
-          <div title={w.saveError} className={styles.errorPill}>
+          <button 
+            title={w.saveError} 
+            className={styles.errorPill}
+            onClick={() => setMenuOpen(true)}
+            style={{ cursor: w.conflict ? 'pointer' : 'default', border: 'none' }}
+          >
             <AlertCircle size={15} />
-            <span>Lỗi đồng bộ</span>
-          </div>
+            <span>{w.conflict ? "Dự án đã thay đổi ở nơi khác" : "Lỗi đồng bộ"}</span>
+          </button>
         )}
         
         <span className={styles.saveStatus}>
           {w.isUploading ? "Đang lưu ảnh…" : w.saveState}
         </span>
 
-        <button className="button button-secondary" onClick={w.resetProject} disabled={busy} title="Dự án mới">
-          <FilePlus size={15} /> <span>Dự án mới</span>
-        </button>
-
+        {/* manual Save */}
         <button className="button button-secondary" onClick={() => void w.saveProject()} disabled={busy || w.conflict} title="Lưu dự án hiện tại">
           <Save size={15} /> <span>Lưu</span>
         </button>
@@ -192,6 +242,8 @@ export default function Header({ workspace: w }: HeaderProps) {
                 </>
               )}
               
+              <div className={styles.projectDropdownDivider}></div>
+
               <button 
                 className={`${styles.menuItem} ${styles.danger}`} 
                 role="menuitem"

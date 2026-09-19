@@ -1,5 +1,5 @@
 import styles from "./WorkflowBar.module.css";
-import { Sparkles, WandSparkles } from "lucide-react";
+import { Sparkles, WandSparkles, RefreshCw, AlertTriangle } from "lucide-react";
 
 type Props = {
   hasSource: boolean;
@@ -10,6 +10,11 @@ type Props = {
   canRender: boolean;
   onGenerate: () => void;
   onRender: () => void;
+  isSettingsCustom: boolean;
+  outputSummary: string;
+  renderChecking: boolean;
+  renderConfigured: boolean;
+  onRefreshEngine: () => void;
 };
 
 export default function WorkflowBar({
@@ -20,7 +25,12 @@ export default function WorkflowBar({
   canGenerate,
   canRender,
   onGenerate,
-  onRender
+  onRender,
+  isSettingsCustom,
+  outputSummary,
+  renderChecking,
+  renderConfigured,
+  onRefreshEngine
 }: Props) {
   return (
     <div className={styles.bar}>
@@ -29,24 +39,45 @@ export default function WorkflowBar({
           <div className={styles.dot}></div>
           <span>Ảnh gốc</span>
         </div>
-        <div className={`${styles.statusItem} ${styles.ready}`}>
+        <div className={`${styles.statusItem} ${isSettingsCustom ? styles.custom : styles.ready}`}>
           <div className={styles.dot}></div>
-          <span>Thiết lập</span>
+          <span>Thiết lập: {isSettingsCustom ? "Đã tùy chỉnh" : "Mặc định"}</span>
         </div>
         <div className={`${styles.statusItem} ${hasPrompt ? styles.ready : ""}`}>
           <div className={styles.dot}></div>
           <span>Prompt</span>
         </div>
+        <div className={styles.outputSummary}>
+          <span className={styles.summaryText}>{outputSummary}</span>
+        </div>
       </div>
 
       <div className={styles.actions}>
+        <div className={styles.engineStatus}>
+          {renderChecking ? (
+            <span className={styles.engineText}><div className={styles.dot} style={{ background: "var(--accent)" }}></div>Đang kiểm tra Render Engine…</span>
+          ) : renderConfigured ? (
+            <span className={styles.engineText}><div className={styles.dot} style={{ background: "var(--success)" }}></div>Render Engine sẵn sàng</span>
+          ) : (
+            <span className={styles.engineText} style={{ color: "var(--danger)" }}>
+              <AlertTriangle size={13} style={{ marginRight: "4px", verticalAlign: "text-bottom" }} />
+              Render Engine chưa kết nối
+            </span>
+          )}
+          {!renderChecking && !renderConfigured && (
+             <button className={styles.refreshEngineBtn} onClick={onRefreshEngine} title="Kiểm tra lại">
+                <RefreshCw size={13} /> Kiểm tra lại
+             </button>
+          )}
+        </div>
+
         <button
           className="button button-secondary"
           disabled={!canGenerate || isGenerating || isRendering}
           onClick={onGenerate}
         >
           <Sparkles size={16} />
-          <span>{isGenerating ? "Đang xử lý…" : "Tạo prompt"}</span>
+          <span>{isGenerating ? "Đang xử lý…" : (hasPrompt ? "Cập nhật prompt" : "Tạo prompt")}</span>
         </button>
         
         <button

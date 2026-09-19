@@ -47,3 +47,11 @@
   align-items: center;
   gap: 1rem;
 }
+
+.custom .dot { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 7%, transparent); }
+.outputSummary { display: flex; align-items: center; margin-left: 12px; padding-left: 12px; border-left: 1px solid var(--border); }
+.summaryText { font-size: 13px; color: var(--muted); font-weight: 500; }
+.engineStatus { display: flex; align-items: center; gap: 8px; margin-right: 12px; }
+.engineText { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); font-weight: 500; }
+.refreshEngineBtn { display: flex; align-items: center; gap: 4px; background: transparent; border: none; color: var(--accent); font-size: 13px; cursor: pointer; padding: 4px; border-radius: 4px; }
+.refreshEngineBtn:hover { background: var(--surface-2); }

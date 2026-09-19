@@ -11,9 +11,7 @@ import {
   Save,
   Sparkles,
   Trash2,
-  RefreshCw,
 } from "lucide-react";
-import { useRenderService } from "@/hooks/useRenderService";
 import type { PromptMode } from "@/lib/api";
 
 type PromptDockProps = {
@@ -63,7 +61,6 @@ export default function PromptDock({
   const copyRequest = useRef(0);
   const currentText = mode === "prompt" ? prompt : negativePrompt;
   const copiedCurrentText = copied?.text === currentText && copied.mode === mode;
-  const renderService = useRenderService();
 
   useEffect(
     () => () => {
@@ -111,14 +108,18 @@ export default function PromptDock({
         </div>
       </div>
       <div className="prompt-content">
+        
+        {/* PROMPT GENERATOR */}
         <label className="field-label" htmlFor="prompt-engine">Phương thức tạo prompt</label>
         <select id="prompt-engine" className="prompt-engine-select" value={promptMode} onChange={e=>onPromptModeChange(e.target.value as PromptMode)} disabled={isGenerating||isRendering}>
           <option value="template">Theo thiết lập — không gọi AI</option>
           <option value="refine">AI tinh chỉnh mô tả</option>
           <option value="vision">AI phân tích ảnh gốc</option>
         </select>
-        <p className="engine-help">{promptMode==="template"?"Ghép các lựa chọn thành Chỉ thị tiếng Việt, không phân tích ảnh.":promptMode==="refine"?"AI tối ưu mô tả từ thiết lập. Yêu cầu có thể phát sinh phí API.":"AI đọc ảnh và nhận xét bố cục, kiến trúc, vật liệu, giao thông. Yêu cầu có thể phát sinh phí API."}</p>
+        <p className="engine-help">{promptMode==="template"?"Ghép các lựa chọn thành Prompt tiếng Việt, không phân tích ảnh.":promptMode==="refine"?"AI tối ưu mô tả từ thiết lập. Yêu cầu có thể phát sinh phí API.":"AI đọc ảnh và nhận xét bố cục, kiến trúc, vật liệu, giao thông. Yêu cầu có thể phát sinh phí API."}</p>
+        
         {analysis.length>0 && <details className="prompt-analysis"><summary>Nhận xét từ AI{model?` · ${model}`:""}</summary><ul>{analysis.map((item,index)=><li key={index}>{item}</li>)}</ul></details>}
+        
         <label className="field-label" htmlFor="scene-notes">
           Ghi chú ý tưởng <span>Không bắt buộc</span>
         </label>
@@ -131,8 +132,32 @@ export default function PromptDock({
           rows={2}
           placeholder="Ví dụ: giữ nguyên nút giao, thêm cây xanh ở dải phân cách và ánh sáng chiều ấm…"
         />
+
+        <div className="prompt-actions" style={{ marginBottom: "16px", marginTop: "12px", borderBottom: "1px solid var(--border)", paddingBottom: "16px" }}>
+          <p>
+            <span className={`status-dot ${canGenerate ? "online" : ""}`} />
+            {canGenerate ? "Ảnh tham chiếu đã sẵn sàng" : "Thêm ảnh tham chiếu để bắt đầu"}
+          </p>
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={() => {
+              setMode("prompt");
+              resetCopyFeedback();
+              onGenerate();
+            }}
+            disabled={!canGenerate || isGenerating || isRendering}
+            title={!canGenerate ? "Thêm ảnh tham chiếu để tạo prompt" : isRendering ? "Đang render ảnh..." : undefined}
+            aria-busy={isGenerating}
+          >
+            {isGenerating ? <LoaderCircle size={15} className="spin" /> : <Sparkles size={15} />}
+            {isGenerating ? "Đang xử lý…" : prompt ? "Cập nhật prompt" : "Tạo prompt"}
+          </button>
+        </div>
+
+        {/* PROMPT EDITOR */}
         <div className="prompt-toolbar">
-          <div className="segmented-control" role="group" aria-label="Chọn loại chỉ dẫn">
+          <div className="segmented-control" role="group" aria-label="Chọn loại prompt">
             <button
               type="button"
               aria-pressed={mode === "prompt"}
@@ -197,26 +222,28 @@ export default function PromptDock({
           }}
           placeholder={
             mode === "prompt"
-              ? "Tự soạn hoặc nhấn Tạo prompt để AI tạo nội dung tự động. Nhấn Render ảnh khi chỉ dẫn đã phù hợp."
+              ? "Tự soạn hoặc nhấn Tạo prompt để AI tạo nội dung tự động. Nhấn Render ảnh khi prompt đã phù hợp."
               : "Nhập những chi tiết bạn không muốn xuất hiện trong phối cảnh. Để trống nếu không có yêu cầu loại trừ."
           }
         />
         <div className="editor-meta">
           <span>
             {isRendering
-              ? "Tạm khóa khi đang dựng phối cảnh"
+              ? "Tạm khóa khi đang render ảnh"
               : isGenerating
-                ? promptMode === "template" ? "Đang tổng hợp thiết lập…" : "AI đang xử lý yêu cầu…"
+                ? promptMode === "template" ? "Đang xử lý prompt…" : "AI đang xử lý yêu cầu…"
                 : mode === "prompt"
                   ? "Prompt phối cảnh · Có thể chỉnh sửa"
                   : "Những chi tiết cần tránh trong kết quả"}
           </span>
           <span>{currentText.length.toLocaleString("vi-VN")} ký tự</span>
         </div>
+
+        {/* STATUS */}
         {isStale && (
           <p className="inline-message warning">
             <AlertCircle size={15} />
-            Ảnh hoặc thông số đã thay đổi. Bạn có thể chỉnh sửa chỉ dẫn hoặc tạo lại trước khi dựng.
+            Ảnh hoặc thông số đã thay đổi. Bạn có thể chỉnh sửa prompt hoặc tạo lại trước khi render.
           </p>
         )}
         {(error || copyError) && (
@@ -231,59 +258,18 @@ export default function PromptDock({
             {notice}
           </p>
         )}
-        <div className="prompt-actions">
-          <p>
-            <span className={`status-dot ${canGenerate ? "online" : ""}`} />
-            {canGenerate ? "Ảnh tham chiếu đã sẵn sàng" : "Thêm ảnh tham chiếu để bắt đầu"}
-          </p>
-          <div className="button-group">
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={onSave}
-              disabled={!prompt.trim() || isGenerating || isRendering}
-              title={!prompt.trim() ? "Cần có chỉ dẫn để lưu phiên bản" : undefined}
-            >
-              <Save size={14} />
-              Lưu phiên bản
-            </button>
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={() => {
-                setMode("prompt");
-                resetCopyFeedback();
-                onGenerate();
-              }}
-              disabled={!canGenerate || isGenerating || isRendering}
-              title={!canGenerate ? "Thêm ảnh tham chiếu để tổng hợp chỉ dẫn" : isRendering ? "Đang trong quá trình kết xuất..." : undefined}
-              aria-busy={isGenerating}
-            >
-              {isGenerating ? <LoaderCircle size={15} className="spin" /> : <Sparkles size={15} />}
-              {isGenerating ? "Đang tổng hợp…" : prompt ? "Cập nhật prompt" : "Tạo prompt"}
-            </button>
-          </div>
-        </div>
-        <div className="render-action-row">
-          <div className="render-service-copy">
-            <strong>Render ảnh</strong>
-            <p aria-live="polite">
-              {isRendering
-                ? "Đang khởi tạo kết xuất (Rendering), vui lòng chờ…"
-                : renderService.message}
-            </p>
-            {!isRendering && (
-              <button
-                type="button"
-                className="text-button"
-                disabled={renderService.checking || isGenerating}
-                onClick={renderService.refresh}
-              >
-                <RefreshCw size={12} className={renderService.checking ? "spin" : ""} />
-                Kiểm tra lại
-              </button>
-            )}
-          </div>
+        
+        <div style={{ marginTop: "16px" }}>
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={onSave}
+            disabled={!prompt.trim() || isGenerating || isRendering}
+            title={!prompt.trim() ? "Cần có prompt để lưu phiên bản" : undefined}
+          >
+            <Save size={14} />
+            Lưu phiên bản
+          </button>
         </div>
       </div>
     </section>

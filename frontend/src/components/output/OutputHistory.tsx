@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Image from "next/image";
-import { ArrowUpRight, Download, FileText, History, Star, Trash2 } from "lucide-react";
+import { ArrowUpRight, Download, FileText, History, Star, Trash2, Check } from "lucide-react";
 import type { PromptVersion, RenderVersion } from "@/lib/workspace";
 
 type Props = {
@@ -24,7 +24,13 @@ export default function OutputHistory({versions,renderVersions,activeVersion,act
     </div>
     {tab==="render"?renderVersions.length?<div className="version-list">
       {renderVersions.map((v,index)=><article className={`version-card render-history-card ${activeRenderId===v.id?"is-active":""}`} key={v.id}>
-        <div className="version-topline"><strong>Render #{renderVersions.length-index}</strong><time dateTime={v.createdAt}>{time(v.createdAt)}</time></div>
+        <div className="version-topline">
+          <div>
+            <strong>Render #{renderVersions.length-index}</strong>
+            {activeRenderId === v.id && <span className="active-badge"><Check size={14}/> Đang mở</span>}
+          </div>
+          <time dateTime={v.createdAt}>{time(v.createdAt)}</time>
+        </div>
         <button className="render-history-restore" onClick={()=>onRestoreRender(v)}>
           <span className="render-thumbnail"><Image src={v.url} alt={`Render ${renderVersions.length-index}`} fill unoptimized sizes="120px"/></span>
           <span><strong>{v.source?.name||"Phiên bản cũ chưa lưu ảnh gốc"}</strong><span className="history-prompt">{v.prompt}</span><span className="history-meta">{v.width} × {v.height} · {v.settings.quality||"Gốc"} · {v.settings.aspect_ratio||"Tỷ lệ gốc"}</span><span className="accent-text">Mở ảnh & thiết lập <ArrowUpRight size={12}/></span></span>
@@ -37,10 +43,14 @@ export default function OutputHistory({versions,renderVersions,activeVersion,act
     </div>:<div className="history-empty"><History size={20}/><div><strong>Chưa có ảnh render</strong><p>Mỗi lần render lưu ảnh gốc, prompt, thiết lập và thời gian để mở lại.</p></div></div>:<>
       <button className="text-button history-filter" aria-pressed={favoritesOnly} onClick={()=>setFavoritesOnly(v=>!v)}><Star size={14}/>Chỉ xem yêu thích</button>
       {prompts.length?<div className="version-list">{prompts.map(v=><article key={v.id} className={`version-card ${activeVersion===v.id?"is-active":""}`}>
-        <div className="version-topline"><span><FileText size={14}/>{time(v.createdAt)}</span><div className="version-controls">
-          <button className="version-star" aria-label={v.favorite?"Bỏ yêu thích prompt":"Yêu thích prompt"} aria-pressed={v.favorite} onClick={()=>onToggleFavorite(v.id)}><Star size={15} fill={v.favorite?"currentColor":"none"}/></button>
-          <button className="version-delete" aria-label="Xóa phiên bản prompt" onClick={()=>onDelete(v.id)}><Trash2 size={13}/></button>
-        </div></div>
+        <div className="version-topline">
+          <span><FileText size={14}/>{time(v.createdAt)}</span>
+          <div className="version-controls">
+            {activeVersion === v.id && <span className="active-badge" style={{ marginRight: '8px' }}><Check size={14}/> Đang mở</span>}
+            <button className="version-star" aria-label={v.favorite?"Bỏ yêu thích prompt":"Yêu thích prompt"} aria-pressed={v.favorite} onClick={()=>onToggleFavorite(v.id)}><Star size={15} fill={v.favorite?"currentColor":"none"}/></button>
+            <button className="version-delete" aria-label="Xóa phiên bản prompt" onClick={()=>onDelete(v.id)}><Trash2 size={13}/></button>
+          </div>
+        </div>
         <button className="version-restore" onClick={()=>onRestore(v)}><strong>{v.sourceName}</strong><p>{v.prompt}</p><span>Mở prompt & thiết lập <ArrowUpRight size={13}/></span></button>
       </article>)}</div>:<div className="history-empty"><History size={20}/><div><strong>Chưa có prompt phù hợp</strong><p>Các prompt đã tạo hoặc lưu sẽ xuất hiện tại đây.</p></div></div>}
     </>}

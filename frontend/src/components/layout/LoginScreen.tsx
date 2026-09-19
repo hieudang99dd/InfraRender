@@ -63,12 +63,12 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
     return (
       <div className="login-screen">
         <div className="login-box checking">
-          <div className="login-brand" style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: 'var(--accent)' }}>
+          <div className="login-brand">
             <Box size={40} strokeWidth={1.5} />
           </div>
           <div className="spinner"></div>
           <p style={{ fontWeight: 500 }}>Đang kết nối Render Engine…</p>
-          {delayMessage && <p className="login-delay-msg" style={{ fontSize: '0.85rem', color: 'var(--muted)', marginTop: '0.5rem', textAlign: 'center' }}>{delayMessage}</p>}
+          {delayMessage && <p className="login-delay-msg">{delayMessage}</p>}
         </div>
       </div>
     );
@@ -77,11 +77,11 @@ export default function LoginScreen({ onLoginSuccess, isChecking }: Props) {
   return (
     <div className="login-screen">
       <div className="login-box">
-        <div className="login-brand" style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: 'var(--foreground)' }}>
+        <div className="login-brand">
           <Box size={48} strokeWidth={1.5} />
         </div>
-        <h1>Đăng nhập</h1>
-        <p className="login-subtitle">Nhập thông tin truy cập hệ thống</p>
+        <h1>InfraRender</h1>
+        <p className="login-subtitle">Architectural & Infrastructure Rendering</p>
         
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
