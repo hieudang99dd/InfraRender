@@ -105,6 +105,20 @@ export default function RenderResult({
               <button
                 type="button"
                 className={styles.iconButton}
+                onClick={() => void toggleFullscreen()}
+                disabled={!fullscreen && (!result || hasImageError)}
+                aria-label={fullscreen ? "Tho�t to�n m�n h�nh" : "Xem to�n m�n h�nh"}
+                title={fullscreen ? "Tho�t to�n m�n h�nh" : "Xem to�n m�n h�nh"}
+              >
+                {fullscreen ? (
+                  <Minimize size={15} aria-hidden="true" />
+                ) : (
+                  <Maximize size={15} aria-hidden="true" />
+                )}
+              </button>
+              <button
+                type="button"
+                className={styles.iconButton}
                 onClick={onDownload}
                 disabled={isDownloading}
                 aria-label="Tải về"
@@ -131,27 +145,7 @@ export default function RenderResult({
         </div>
       </div>
 
-      {result && (
-        <div className={styles.viewerToolbar} aria-label="Công cụ xem ảnh">
-          <div className={styles.toolbarSpacer} />
-          <div className={styles.toolbarDivider} />
-          <button
-            type="button"
-            className={styles.iconButton}
-            onClick={() => void toggleFullscreen()}
-            disabled={!fullscreen && (!result || hasImageError)}
-            aria-label={fullscreen ? "Thoát toàn màn hình" : "Xem toàn màn hình"}
-            aria-pressed={fullscreen}
-            title={fullscreen ? "Thoát toàn màn hình (Esc)" : "Toàn màn hình"}
-          >
-            {fullscreen ? (
-              <Minimize size={15} aria-hidden="true" />
-            ) : (
-              <Maximize size={15} aria-hidden="true" />
-            )}
-          </button>
-        </div>
-      )}
+      
 
       <div
         className={`${styles.imageViewport} ${!result ? styles.emptyViewport : ""}`}

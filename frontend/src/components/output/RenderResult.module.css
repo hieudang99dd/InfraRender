@@ -122,28 +122,6 @@
   background: var(--danger-bg, rgba(239, 68, 68, 0.15));
 }
 
-.viewerToolbar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 38px;
-  padding: 4px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--background);
-  flex-shrink: 0;
-}
-
-.toolbarSpacer {
-  flex: 1;
-}
-
-.toolbarDivider {
-  width: 1px;
-  height: 16px;
-  margin: 0 4px;
-  background: var(--border);
-}
-
 .imageViewport {
   position: relative;
   flex: 0 0 auto;
@@ -193,12 +171,6 @@
 
 .imageError svg {
   color: var(--warning);
-}
-
-.fileName > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .viewportNotice {

@@ -272,7 +272,6 @@
   transition: transform 150ms ease;
 }
 
-.imageCaption,
 .loadingBadge {
   position: absolute;
   display: flex;
@@ -286,22 +285,6 @@
   border-radius: 6px;
   font-size: 12px;
   backdrop-filter: blur(8px);
-}
-
-.imageCaption {
-  bottom: 13px;
-  left: 13px;
-}
-
-.imageCaption > svg {
-  flex-shrink: 0;
-  color: var(--muted);
-}
-
-.imageCaption > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .loadingBadge {
@@ -330,7 +313,7 @@
   pointer-events: none;
 }
 
-.error {
+.errorNotice {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -344,7 +327,7 @@
   line-height: 1.6;
 }
 
-.error > svg {
+.errorNotice > svg {
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -368,95 +351,10 @@
   }
 }
 
-@container (max-width: 850px) {
-  .fitLabel,
-  .deleteLabel,
-  .separator {
-    display: none;
-  }
-
-  .fitButton,
-  .deleteButton {
-    width: 32px;
-    padding: 0;
-  }
-
-  .controls,
-  .sourceActions {
-    gap: 3px;
-  }
-}
-
-@media (max-width: 700px) {
-  .toolbar {
-    flex-wrap: wrap;
-    gap: 11px;
-    padding: 13px;
-  }
-
-  .heading {
-    width: 100%;
-  }
-
-  .status {
-    margin-left: auto;
-  }
-
-  .controls {
-    width: 100%;
-  }
-
-  .sourceActions {
-    margin-left: auto;
-  }
-
-  .viewport {
-    margin: 8px;
-    min-height: 0;
-  }
-
-  .emptyState {
-    padding: 16px;
-  }
-
-  .emptyState h3 {
-    font-size: 15px;
-  }
-
-  .desktopBreak {
-    display: none;
-  }
-
-  .imageFrame {
-    inset: 0;
-  }
-}
-
-@media (max-width: 420px) {
-  .controls {
-    gap: 4px;
-  }
-
-  .fitButton {
-    width: 32px;
-    padding: 0;
-  }
-
-  .separator {
-    margin-inline: 1px;
-  }
-
-  .fitLabel {
-    display: none;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .sourceImage,
   .uploadButton,
   .iconButton,
-  .fitButton,
-  .deleteButton,
   .viewport {
     transition: none;
   }
