@@ -280,27 +280,61 @@ export default function ImageCanvas({
 
   return (
     <section ref={canvasRef} className={styles.canvas} aria-label="Ảnh gốc">
-      <div className={styles.toolbar}>
-        <div className={styles.heading}>
-          <ImageIcon size={17} aria-hidden="true" />
-          <h2>Ảnh gốc</h2>
-          <span className={`${styles.status} ${sourceImage ? styles.ready : ""}`}>
-            <span />
-            {sourceImage ? "Đã có ảnh" : "Chưa có ảnh"}
-          </span>
+      <div className={styles.header}>
+        <div className={styles.identity}>
+          <div className={styles.titleRow}>
+            <ImageIcon size={15} aria-hidden="true" className={styles.titleIcon} />
+            <h2>Ảnh gốc</h2>
+            <span className={`${styles.status} ${sourceImage ? styles.ready : ""}`}>
+              <span className={styles.statusDot} />
+              {sourceImage ? "Đã có ảnh" : "Chưa có ảnh"}
+            </span>
+          </div>
+          {sourceImage && (
+            <div className={styles.filename} title={sourceName}>
+              {sourceName}
+            </div>
+          )}
         </div>
 
-        <div className={styles.controls} aria-label="Công cụ xem ảnh">
+        <div className={styles.actions} aria-label="Hành động">
+          {sourceImage && (
+            <>
+              <button
+                type="button"
+                className={styles.iconButton}
+                onClick={() => inputRef.current?.click()}
+                aria-label="Thay ảnh"
+                title="Thay ảnh"
+              >
+                <RefreshCcw size={15} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className={`${styles.iconButton} ${styles.deleteButton}`}
+                onClick={removeImage}
+                aria-label="Xóa ảnh"
+                title="Xóa ảnh"
+              >
+                <Trash2 size={15} aria-hidden="true" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {sourceImage && (
+        <div className={styles.viewerToolbar} aria-label="Công cụ xem ảnh">
           <div className={styles.zoomControls}>
             <button
               type="button"
               className={styles.iconButton}
               onClick={() => changeZoom(zoom - 25)}
-              disabled={!sourceImage || zoom <= 50}
-              aria-label="Thu nhỏ ảnh"
-              title="Thu nhỏ ảnh"
+              disabled={zoom <= 50}
+              aria-label="Thu nhỏ"
+              title="Thu nhỏ"
             >
-              <Minus size={16} aria-hidden="true" />
+              <Minus size={15} aria-hidden="true" />
             </button>
             <span className={styles.zoomValue} aria-live="polite">
               {zoom}%
@@ -309,63 +343,38 @@ export default function ImageCanvas({
               type="button"
               className={styles.iconButton}
               onClick={() => changeZoom(zoom + 25)}
-              disabled={!sourceImage || zoom >= 200}
-              aria-label="Phóng to ảnh"
-              title="Phóng to ảnh"
+              disabled={zoom >= 200}
+              aria-label="Phóng to"
+              title="Phóng to"
             >
-              <Plus size={16} aria-hidden="true" />
+              <Plus size={15} aria-hidden="true" />
             </button>
           </div>
+          <div className={styles.toolbarDivider} />
           <button
             type="button"
-            className={styles.fitButton}
+            className={styles.iconButton}
             onClick={resetView}
-            disabled={!sourceImage}
-            aria-label="Đưa ảnh về vừa khung"
-            title="Đưa ảnh về vừa khung"
+            aria-label="Đặt lại chế độ xem"
+            title="Vừa khung / Đặt lại chế độ xem"
           >
             <Expand size={15} aria-hidden="true" />
-            <span className={styles.fitLabel}>Vừa khung</span>
           </button>
           <button
             type="button"
             className={styles.iconButton}
             onClick={() => void toggleFullscreen()}
-            aria-label={fullscreen ? "Thoát toàn màn hình ảnh gốc" : "Xem toàn màn hình ảnh gốc"}
-            title={fullscreen ? "Thoát toàn màn hình" : "Xem toàn màn hình"}
+            aria-label={fullscreen ? "Thoát toàn màn hình" : "Xem toàn màn hình"}
+            title={fullscreen ? "Thoát toàn màn hình (Esc)" : "Toàn màn hình"}
           >
             {fullscreen ? (
-              <Minimize size={16} aria-hidden="true" />
+              <Minimize size={15} aria-hidden="true" />
             ) : (
-              <Maximize size={16} aria-hidden="true" />
+              <Maximize size={15} aria-hidden="true" />
             )}
           </button>
-          {sourceImage && (
-            <div className={styles.sourceActions}>
-              <span className={styles.separator} aria-hidden="true" />
-              <button
-                type="button"
-                className={styles.iconButton}
-                onClick={() => inputRef.current?.click()}
-                aria-label="Thay ảnh tham chiếu"
-                title="Thay ảnh tham chiếu"
-              >
-                <RefreshCcw size={16} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className={styles.deleteButton}
-                onClick={removeImage}
-                aria-label="Xóa ảnh tham chiếu"
-                title="Xóa ảnh tham chiếu"
-              >
-                <Trash2 size={16} aria-hidden="true" />
-                <span className={styles.deleteLabel}>Xóa ảnh</span>
-              </button>
-            </div>
-          )}
         </div>
-      </div>
+      )}
 
       <input
         ref={inputRef}
@@ -425,25 +434,19 @@ export default function ImageCanvas({
               className={styles.uploadButton}
               onClick={() => inputRef.current?.click()}
             >
-              <Upload size={17} aria-hidden="true" />
+              <Upload size={16} aria-hidden="true" />
               Chọn ảnh từ thiết bị
             </button>
-            <span className={styles.dropHint}>hoặc kéo và thả ảnh vào đây</span>
+            <span className={styles.dropHint}>hoặc kéo thả ảnh vào đây</span>
             <div
               className={styles.formats}
               aria-label="Định dạng hỗ trợ: JPG, PNG, WEBP. Tối đa 20 MB và 40 megapixel."
             >
-              JPG, PNG, WEBP · Tối đa 20 MB · 40 MP
+              JPG, PNG, WEBP • Tối đa 20 MB • 40 MP
             </div>
           </div>
         )}
 
-        {sourceImage && (
-          <div className={styles.imageCaption} title={sourceName}>
-            <ImageIcon size={13} aria-hidden="true" />
-            <span>{sourceName || "Ảnh tham chiếu"}</span>
-          </div>
-        )}
         {dragActive && (
           <div className={styles.dropOverlay}>
             <Upload size={28} aria-hidden="true" />
@@ -452,16 +455,15 @@ export default function ImageCanvas({
         )}
         {loading && (
           <div className={styles.loadingBadge} role="status">
-            <LoaderCircle size={16} aria-hidden="true" />
+            <LoaderCircle size={15} aria-hidden="true" />
             Đang đọc ảnh…
           </div>
         )}
       </div>
-
       {error && (
-        <div className={styles.error} role="alert">
-          <AlertCircle size={16} aria-hidden="true" />
-          <span>{error}</span>
+        <div className={styles.errorNotice} role="alert">
+          <AlertCircle size={15} aria-hidden="true" />
+          <p>{error}</p>
         </div>
       )}
     </section>

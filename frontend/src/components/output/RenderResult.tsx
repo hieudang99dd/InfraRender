@@ -82,59 +82,76 @@ export default function RenderResult({
   return (
     <section ref={cardRef} className={styles.card} aria-labelledby={titleId}>
       <div className={styles.header}>
-        <div className={styles.heading}>
-          <Sparkles size={17} aria-hidden="true" />
-          <h2 id={titleId}>Ảnh Render</h2>
-          {result && !isRendering && <span className={styles.resultBadge}>Kết quả</span>}
+        <div className={styles.identity}>
+          <div className={styles.titleRow}>
+            <Sparkles size={15} aria-hidden="true" className={styles.titleIcon} />
+            <h2 id={titleId}>Ảnh Render</h2>
+            <span
+              className={`${styles.status} ${isRendering ? styles.rendering : result ? styles.ready : ""}`}
+            >
+              <span className={styles.statusDot} />
+              {isRendering ? "Đang render" : result ? "Đã có kết quả" : "Chưa có phối cảnh"}
+            </span>
+          </div>
+          {result && (
+            <div className={styles.filename} title={result.name}>
+              {result.name}
+            </div>
+          )}
         </div>
         <div className={styles.actions}>
-          {result || fullscreen ? (
+          {result ? (
             <>
               <button
                 type="button"
-                className={`button button-secondary ${styles.downloadButton}`}
+                className={styles.iconButton}
                 onClick={onDownload}
-                disabled={!result || isRendering || isDownloading}
-                aria-label={isDownloading ? "Đang tải ảnh về" : "Tải phối cảnh về máy"}
+                disabled={isDownloading}
+                aria-label="Tải về"
+                title="Tải về"
               >
                 {isDownloading ? (
                   <LoaderCircle size={15} className={styles.spinner} aria-hidden="true" />
                 ) : (
                   <Download size={15} aria-hidden="true" />
                 )}
-                {isDownloading ? "Đang tải…" : "Tải về"}
               </button>
               <button
                 type="button"
-                className={styles.iconButton}
-                onClick={() => void toggleFullscreen()}
-                disabled={!fullscreen && (!result || hasImageError)}
-                aria-label={fullscreen ? "Thoát toàn màn hình" : "Xem phối cảnh toàn màn hình"}
-                aria-pressed={fullscreen}
-                title={fullscreen ? "Thoát toàn màn hình (Esc)" : "Toàn màn hình"}
-              >
-                {fullscreen ? (
-                  <Minimize size={16} aria-hidden="true" />
-                ) : (
-                  <Maximize size={16} aria-hidden="true" />
-                )}
-              </button>
-              <button
-                type="button"
-                className={`${styles.iconButton} ${styles.removeButton}`}
+                className={`${styles.iconButton} ${styles.deleteButton}`}
                 onClick={() => void removeResult()}
-                disabled={!result || isRendering || isDownloading}
+                disabled={isRendering || isDownloading}
                 aria-label="Xóa phối cảnh"
                 title="Xóa phối cảnh"
               >
                 <Trash2 size={15} aria-hidden="true" />
               </button>
             </>
-          ) : (
-            <span className={styles.actionsHint}>Kết quả để đối chiếu với ảnh gốc</span>
-          )}
+          ) : null}
         </div>
       </div>
+
+      {result && (
+        <div className={styles.viewerToolbar} aria-label="Công cụ xem ảnh">
+          <div className={styles.toolbarSpacer} />
+          <div className={styles.toolbarDivider} />
+          <button
+            type="button"
+            className={styles.iconButton}
+            onClick={() => void toggleFullscreen()}
+            disabled={!fullscreen && (!result || hasImageError)}
+            aria-label={fullscreen ? "Thoát toàn màn hình" : "Xem toàn màn hình"}
+            aria-pressed={fullscreen}
+            title={fullscreen ? "Thoát toàn màn hình (Esc)" : "Toàn màn hình"}
+          >
+            {fullscreen ? (
+              <Minimize size={15} aria-hidden="true" />
+            ) : (
+              <Maximize size={15} aria-hidden="true" />
+            )}
+          </button>
+        </div>
+      )}
 
       <div
         className={`${styles.imageViewport} ${!result ? styles.emptyViewport : ""}`}
@@ -159,17 +176,6 @@ export default function RenderResult({
                 <p>Không thể hiển thị phối cảnh. Bạn có thể thử tải ảnh xuống.</p>
               </div>
             )}
-            <div className={styles.caption}>
-              <span className={styles.fileName} title={result.name}>
-                <ImageIcon size={12} aria-hidden="true" />
-                <span>{result.name}</span>
-              </span>
-              {Boolean(result.width && result.height) && (
-                <span className={styles.dimensions}>
-                  {result.width} × {result.height}
-                </span>
-              )}
-            </div>
           </>
         ) : (
           <div className={styles.emptyState}>
@@ -198,20 +204,13 @@ export default function RenderResult({
         ) : (
           result &&
           isRendering && (
-            <div className={styles.viewportNotice} role="status">
+            <div className={`${styles.viewportNotice} ${styles.loadingNotice}`} role="status">
               <LoaderCircle size={15} className={styles.spinner} aria-hidden="true" />
-              <span>Đang dựng phối cảnh mới… Kết quả trước vẫn được giữ lại.</span>
+              <span>Đang tạo phiên bản mới…</span>
             </div>
           )
         )}
       </div>
-      {result?.details?.native_size && (
-        <p className="output-details">
-          Ảnh AI: {result.details.native_size} → xuất: {result.width} × {result.height}
-          {result.details.upscaled ? " · Đã phóng lớn, không phải độ phân giải AI gốc" : ""}
-          {result.details.cropped ? " · Đã cắt giữa ảnh để đúng tỷ lệ" : ""}
-        </p>
-      )}
     </section>
   );
 }
