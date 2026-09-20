@@ -432,11 +432,24 @@ body {
   gap: 20px;
   width: 100%;
 }
+.workspace-column {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 .comparison-column,
 .prompt-column,
 .history-column {
   min-width: 0;
-  grid-column: 1;
+  flex: 0 0 auto;
 }
 .comparison-heading {
   display: flex;
@@ -472,7 +485,7 @@ body {
 }
 .settings-column {
   grid-column: 2;
-  grid-row: 1 / span 3;
+  grid-row: 1;
   height: calc(100dvh - var(--header-height) - var(--workflow-bar-height) - 56px);
   min-height: 0;
   align-self: start;
@@ -816,6 +829,12 @@ body {
   .studio-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+  .workspace-column {
+    display: contents;
+  }
+  .comparison-column {
+    grid-row: 1;
+  }
   .settings-column {
     grid-column: 1;
     grid-row: 2;
@@ -826,9 +845,11 @@ body {
   }
   .prompt-column {
     grid-row: 3;
+    grid-column: 1;
   }
   .history-column {
     grid-row: 4;
+    grid-column: 1;
   }
 
   .brand-name {

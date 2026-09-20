@@ -65,6 +65,7 @@ export default function Home() {
             <h1 className="sr-only">Không gian làm việc InfraRender</h1>
 
             <div className="studio-grid">
+              <div className="workspace-column">
               <div className="comparison-column">
                 <div className="comparison-heading">
                   <h2>Đối chiếu hiện trạng & phối cảnh</h2>
@@ -90,17 +91,6 @@ export default function Home() {
                     />
                   </div>
                 </div>
-              </div>
-
-              <div className="settings-column" id="settings">
-                <RightPanel
-                  key={workspace.projectRevision}
-                  settings={workspace.settings}
-                  onChange={workspace.setSettings}
-                  isGenerating={workspace.isGenerating}
-                  isRendering={workspace.isRendering}
-                  canGenerate={Boolean(workspace.source) && !workspace.isUploading}
-                />
               </div>
 
               <div className="prompt-column" id="prompt">
@@ -146,6 +136,18 @@ export default function Home() {
                   />
                 </div>
               )}
+              </div>
+
+              <div className="settings-column" id="settings">
+                <RightPanel
+                  key={workspace.projectRevision}
+                  settings={workspace.settings}
+                  onChange={workspace.setSettings}
+                  isGenerating={workspace.isGenerating}
+                  isRendering={workspace.isRendering}
+                  canGenerate={Boolean(workspace.source) && !workspace.isUploading}
+                />
+              </div>
             </div>
           </main>
 
