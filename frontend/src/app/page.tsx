@@ -66,76 +66,76 @@ export default function Home() {
 
             <div className="studio-grid">
               <div className="workspace-column">
-              <div className="comparison-column">
-                <div className="comparison-heading">
-                  <h2>Đối chiếu hiện trạng & phối cảnh</h2>
-                  <p>Ảnh gốc và phối cảnh trong cùng một khung nhìn.</p>
-                </div>
-                <div className="comparison-grid" data-has-source={Boolean(workspace.source)}>
-                  <div className="comparison-pane" id="source">
-                    <ImageCanvas
-                      key={workspace.projectRevision}
-                      sourceImage={workspace.source?.url || null}
-                      sourceName={workspace.source?.name}
-                      onImageChange={workspace.changeSource}
-                      onImageRemove={() => workspace.changeSource(null)}
-                    />
+                <div className="comparison-column">
+                  <div className="comparison-heading">
+                    <h2>Đối chiếu hiện trạng & phối cảnh</h2>
+                    <p>Ảnh gốc và phối cảnh trong cùng một khung nhìn.</p>
                   </div>
-                  <div className="comparison-pane" id="render">
-                    <RenderResult
-                      result={workspace.renderedImage}
-                      isRendering={workspace.isRendering}
-                      onRemove={workspace.removeRenderedImage}
-                      onDownload={() => void workspace.downloadImage()}
-                      isDownloading={workspace.isDownloading}
-                    />
+                  <div className="comparison-grid" data-has-source={Boolean(workspace.source)}>
+                    <div className="comparison-pane" id="source">
+                      <ImageCanvas
+                        key={workspace.projectRevision}
+                        sourceImage={workspace.source?.url || null}
+                        sourceName={workspace.source?.name}
+                        onImageChange={workspace.changeSource}
+                        onImageRemove={() => workspace.changeSource(null)}
+                      />
+                    </div>
+                    <div className="comparison-pane" id="render">
+                      <RenderResult
+                        result={workspace.renderedImage}
+                        isRendering={workspace.isRendering}
+                        onRemove={workspace.removeRenderedImage}
+                        onDownload={() => void workspace.downloadImage()}
+                        isDownloading={workspace.isDownloading}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="prompt-column" id="prompt">
-                <PromptDock
-                  promptMode={workspace.promptMode}
-                  onPromptModeChange={workspace.setPromptMode}
-                  analysis={workspace.promptAnalysis}
-                  model={workspace.promptModel}
-                  prompt={workspace.prompt}
-                  onPromptChange={workspace.setPrompt}
-                  negativePrompt={workspace.negativePrompt}
-                  onNegativePromptChange={workspace.setNegativePrompt}
-                  notes={workspace.notes}
-                  onNotesChange={workspace.setNotes}
-                  onGenerate={workspace.generatePrompt}
-                  onSave={workspace.saveVersion}
-                  onClear={workspace.clearPrompt}
-                  isGenerating={workspace.isGenerating}
-                  isRendering={workspace.isRendering}
-                  canGenerate={
-                    Boolean(workspace.source && "saved_name" in workspace.source) &&
-                    !workspace.isUploading
-                  }
-                  isStale={workspace.isStale}
-                  error={workspace.error}
-                  notice={workspace.notice}
-                />
-              </div>
-
-              {(workspace.versions.length > 0 || workspace.renderVersions.length > 0) && (
-                <div className="history-column" id="versions">
-                  <OutputHistory
-                    versions={workspace.versions}
-                    renderVersions={workspace.renderVersions}
-                    activeVersion={workspace.activeVersion}
-                    onRestore={workspace.restoreVersion}
-                    onToggleFavorite={workspace.toggleFavorite}
-                    onDelete={workspace.deleteVersion}
-                    onDeleteRender={workspace.deleteRenderVersion}
-                    onRestoreRender={workspace.restoreRenderVersion}
-                    onDownloadRender={(version) => void workspace.downloadImage(version)}
-                    activeRenderId={workspace.activeRenderId}
+                <div className="prompt-column" id="prompt">
+                  <PromptDock
+                    promptMode={workspace.promptMode}
+                    onPromptModeChange={workspace.setPromptMode}
+                    analysis={workspace.promptAnalysis}
+                    model={workspace.promptModel}
+                    prompt={workspace.prompt}
+                    onPromptChange={workspace.setPrompt}
+                    negativePrompt={workspace.negativePrompt}
+                    onNegativePromptChange={workspace.setNegativePrompt}
+                    notes={workspace.notes}
+                    onNotesChange={workspace.setNotes}
+                    onGenerate={workspace.generatePrompt}
+                    onSave={workspace.saveVersion}
+                    onClear={workspace.clearPrompt}
+                    isGenerating={workspace.isGenerating}
+                    isRendering={workspace.isRendering}
+                    canGenerate={
+                      Boolean(workspace.source && "saved_name" in workspace.source) &&
+                      !workspace.isUploading
+                    }
+                    isStale={workspace.isStale}
+                    error={workspace.error}
+                    notice={workspace.notice}
                   />
                 </div>
-              )}
+
+                {(workspace.versions.length > 0 || workspace.renderVersions.length > 0) && (
+                  <div className="history-column" id="versions">
+                    <OutputHistory
+                      versions={workspace.versions}
+                      renderVersions={workspace.renderVersions}
+                      activeVersion={workspace.activeVersion}
+                      onRestore={workspace.restoreVersion}
+                      onToggleFavorite={workspace.toggleFavorite}
+                      onDelete={workspace.deleteVersion}
+                      onDeleteRender={workspace.deleteRenderVersion}
+                      onRestoreRender={workspace.restoreRenderVersion}
+                      onDownloadRender={(version) => void workspace.downloadImage(version)}
+                      activeRenderId={workspace.activeRenderId}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="settings-column" id="settings">
