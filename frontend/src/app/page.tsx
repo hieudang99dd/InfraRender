@@ -57,141 +57,140 @@ export default function Home() {
         Đến không gian làm việc
       </a>
 
-      <fieldset className="workspace-fieldset" disabled={!workspace.isLoaded}>
-        <div
-          className="workspace-fieldset-inner"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            flex: 1,
-            minHeight: 0,
-            height: "100%",
-          }}
-        >
-          <Header workspace={workspace} />
+      <div
+        className="workspace-fieldset"
+        aria-disabled={!workspace.isLoaded}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+          pointerEvents: workspace.isLoaded ? "auto" : "none",
+        }}
+      >
+        <Header workspace={workspace} />
 
-          <div className="app-shell">
-            <main className="studio" id="workspace" tabIndex={-1}>
-              <h1 className="sr-only">Không gian làm việc InfraRender</h1>
+        <div className="app-shell">
+          <main className="studio" id="workspace" tabIndex={-1}>
+            <h1 className="sr-only">Không gian làm việc InfraRender</h1>
 
-              <div className="studio-grid">
-                <div className="workspace-column">
-                  <div className="comparison-column">
-                    <div className="comparison-heading">
-                      <h2>Đối chiếu hiện trạng & phối cảnh</h2>
-                      <p>Ảnh gốc và phối cảnh trong cùng một khung nhìn.</p>
-                    </div>
-                    <div className="comparison-grid" data-has-source={Boolean(workspace.source)}>
-                      <div className="comparison-pane" id="source">
-                        <ImageCanvas
-                          key={workspace.projectRevision}
-                          sourceImage={workspace.source?.url || null}
-                          sourceName={workspace.source?.name}
-                          onImageChange={workspace.changeSource}
-                          onImageRemove={() => workspace.changeSource(null)}
-                        />
-                      </div>
-                      <div className="comparison-pane" id="render">
-                        <RenderResult
-                          result={workspace.renderedImage}
-                          isRendering={workspace.isRendering}
-                          onRemove={workspace.removeRenderedImage}
-                          onDownload={() => void workspace.downloadImage()}
-                          isDownloading={workspace.isDownloading}
-                        />
-                      </div>
-                    </div>
+            <div className="studio-grid">
+              <div className="workspace-column">
+                <div className="comparison-column">
+                  <div className="comparison-heading">
+                    <h2>Đối chiếu hiện trạng & phối cảnh</h2>
+                    <p>Ảnh gốc và phối cảnh trong cùng một khung nhìn.</p>
                   </div>
-
-                  <div className="workspace-scroll">
-                    <div className="prompt-column" id="prompt">
-                      <PromptDock
-                        promptMode={workspace.promptMode}
-                        onPromptModeChange={workspace.setPromptMode}
-                        analysis={workspace.promptAnalysis}
-                        model={workspace.promptModel}
-                        prompt={workspace.prompt}
-                        onPromptChange={workspace.setPrompt}
-                        negativePrompt={workspace.negativePrompt}
-                        onNegativePromptChange={workspace.setNegativePrompt}
-                        notes={workspace.notes}
-                        onNotesChange={workspace.setNotes}
-                        onGenerate={workspace.generatePrompt}
-                        onSave={workspace.saveVersion}
-                        onClear={workspace.clearPrompt}
-                        isGenerating={workspace.isGenerating}
-                        isRendering={workspace.isRendering}
-                        canGenerate={
-                          Boolean(workspace.source && "saved_name" in workspace.source) &&
-                          !workspace.isUploading
-                        }
-                        isStale={workspace.isStale}
-                        error={workspace.error}
-                        notice={workspace.notice}
+                  <div className="comparison-grid" data-has-source={Boolean(workspace.source)}>
+                    <div className="comparison-pane" id="source">
+                      <ImageCanvas
+                        key={workspace.projectRevision}
+                        sourceImage={workspace.source?.url || null}
+                        sourceName={workspace.source?.name}
+                        onImageChange={workspace.changeSource}
+                        onImageRemove={() => workspace.changeSource(null)}
                       />
                     </div>
-
-                    {(workspace.versions.length > 0 || workspace.renderVersions.length > 0) && (
-                      <div className="history-column" id="versions">
-                        <OutputHistory
-                          versions={workspace.versions}
-                          renderVersions={workspace.renderVersions}
-                          activeVersion={workspace.activeVersion}
-                          onRestore={workspace.restoreVersion}
-                          onToggleFavorite={workspace.toggleFavorite}
-                          onDelete={workspace.deleteVersion}
-                          onDeleteRender={workspace.deleteRenderVersion}
-                          onRestoreRender={workspace.restoreRenderVersion}
-                          onDownloadRender={(version) => void workspace.downloadImage(version)}
-                          activeRenderId={workspace.activeRenderId}
-                        />
-                      </div>
-                    )}
+                    <div className="comparison-pane" id="render">
+                      <RenderResult
+                        result={workspace.renderedImage}
+                        isRendering={workspace.isRendering}
+                        onRemove={workspace.removeRenderedImage}
+                        onDownload={() => void workspace.downloadImage()}
+                        isDownloading={workspace.isDownloading}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="settings-column" id="settings">
-                  <RightPanel
-                    key={workspace.projectRevision}
-                    settings={workspace.settings}
-                    onChange={workspace.setSettings}
-                    isGenerating={workspace.isGenerating}
-                    isRendering={workspace.isRendering}
-                    canGenerate={Boolean(workspace.source) && !workspace.isUploading}
-                  />
+                <div className="workspace-scroll">
+                  <div className="prompt-column" id="prompt">
+                    <PromptDock
+                      promptMode={workspace.promptMode}
+                      onPromptModeChange={workspace.setPromptMode}
+                      analysis={workspace.promptAnalysis}
+                      model={workspace.promptModel}
+                      prompt={workspace.prompt}
+                      onPromptChange={workspace.setPrompt}
+                      negativePrompt={workspace.negativePrompt}
+                      onNegativePromptChange={workspace.setNegativePrompt}
+                      notes={workspace.notes}
+                      onNotesChange={workspace.setNotes}
+                      onGenerate={workspace.generatePrompt}
+                      onSave={workspace.saveVersion}
+                      onClear={workspace.clearPrompt}
+                      isGenerating={workspace.isGenerating}
+                      isRendering={workspace.isRendering}
+                      canGenerate={
+                        Boolean(workspace.source && "saved_name" in workspace.source) &&
+                        !workspace.isUploading
+                      }
+                      isStale={workspace.isStale}
+                      error={workspace.error}
+                      notice={workspace.notice}
+                    />
+                  </div>
+
+                  {(workspace.versions.length > 0 || workspace.renderVersions.length > 0) && (
+                    <div className="history-column" id="versions">
+                      <OutputHistory
+                        versions={workspace.versions}
+                        renderVersions={workspace.renderVersions}
+                        activeVersion={workspace.activeVersion}
+                        onRestore={workspace.restoreVersion}
+                        onToggleFavorite={workspace.toggleFavorite}
+                        onDelete={workspace.deleteVersion}
+                        onDeleteRender={workspace.deleteRenderVersion}
+                        onRestoreRender={workspace.restoreRenderVersion}
+                        onDownloadRender={(version) => void workspace.downloadImage(version)}
+                        activeRenderId={workspace.activeRenderId}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
-            </main>
 
-            <WorkflowBar
-              hasSource={Boolean(workspace.source)}
-              isUploading={workspace.isUploading}
-              hasUploadedSource={Boolean(workspace.source && "saved_name" in workspace.source)}
-              hasPrompt={Boolean(workspace.prompt.trim())}
-              isGenerating={workspace.isGenerating}
-              isRendering={workspace.isRendering}
-              canGenerate={
-                Boolean(workspace.source && "saved_name" in workspace.source) &&
-                !workspace.isUploading
-              }
-              canRender={
-                Boolean(workspace.source && "saved_name" in workspace.source) &&
-                !workspace.isUploading &&
-                Boolean(workspace.prompt.trim()) &&
-                Boolean(renderService.service?.configured)
-              }
-              onGenerate={workspace.generatePrompt}
-              onRender={workspace.renderImage}
-              isSettingsCustom={!isDefaultRenderSettings(workspace.settings)}
-              outputSummary={getOutputSummary(workspace.settings)}
-              renderChecking={renderService.checking}
-              renderConfigured={Boolean(renderService.service?.configured)}
-              renderReady={Boolean(renderService.service?.ready)}
-              onRefreshEngine={renderService.refresh}
-            />
-          </div>
+              <div className="settings-column" id="settings">
+                <RightPanel
+                  key={workspace.projectRevision}
+                  settings={workspace.settings}
+                  onChange={workspace.setSettings}
+                  isGenerating={workspace.isGenerating}
+                  isRendering={workspace.isRendering}
+                  canGenerate={Boolean(workspace.source) && !workspace.isUploading}
+                />
+              </div>
+            </div>
+          </main>
+
+          <WorkflowBar
+            hasSource={Boolean(workspace.source)}
+            isUploading={workspace.isUploading}
+            hasUploadedSource={Boolean(workspace.source && "saved_name" in workspace.source)}
+            hasPrompt={Boolean(workspace.prompt.trim())}
+            isGenerating={workspace.isGenerating}
+            isRendering={workspace.isRendering}
+            canGenerate={
+              Boolean(workspace.source && "saved_name" in workspace.source) &&
+              !workspace.isUploading
+            }
+            canRender={
+              Boolean(workspace.source && "saved_name" in workspace.source) &&
+              !workspace.isUploading &&
+              Boolean(workspace.prompt.trim()) &&
+              Boolean(renderService.service?.configured)
+            }
+            onGenerate={workspace.generatePrompt}
+            onRender={workspace.renderImage}
+            isSettingsCustom={!isDefaultRenderSettings(workspace.settings)}
+            outputSummary={getOutputSummary(workspace.settings)}
+            renderChecking={renderService.checking}
+            renderConfigured={Boolean(renderService.service?.configured)}
+            renderReady={Boolean(renderService.service?.ready)}
+            onRefreshEngine={renderService.refresh}
+          />
         </div>
-      </fieldset>
+      </div>
     </div>
   );
 }
