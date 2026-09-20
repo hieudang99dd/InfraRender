@@ -78,8 +78,8 @@ export default function Home() {
               <div className="workspace-column">
                 <div className="comparison-column">
                   <div className="comparison-heading">
-                    <h2>�?i chi?u hi?n tr?ng & ph?i c?nh</h2>
-                    <p>?nh g?c v� ?nh render lu�n du?c gi? trong c�ng m?t khung nh�n.</p>
+                    <h2>Đối chiếu hiện trạng & phối cảnh</h2>
+                    <p>Ảnh gốc và ảnh render luôn được giữ trong cùng một khung nhìn.</p>
                   </div>
                   <div className="comparison-grid" data-has-source={Boolean(workspace.source)}>
                     <div className="comparison-pane" id="source">
