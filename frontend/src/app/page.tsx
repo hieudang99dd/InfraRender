@@ -60,13 +60,7 @@ export default function Home() {
       <div
         className="workspace-fieldset"
         aria-disabled={!workspace.isLoaded}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          flex: 1,
-          minHeight: 0,
-          pointerEvents: workspace.isLoaded ? "auto" : "none",
-        }}
+        inert={!workspace.isLoaded ? true : undefined}
       >
         <Header workspace={workspace} />
 

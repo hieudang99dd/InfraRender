@@ -422,7 +422,7 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden !important;
+  overflow: hidden;
 }
 .comparison-column {
   min-width: 0;
