@@ -399,7 +399,7 @@ body {
 
 .studio {
   flex: 1;
-  padding: 24px 28px 32px;
+  padding: 16px 20px 24px;
   min-height: 0;
   overflow: hidden;
   min-width: 0;
@@ -427,7 +427,7 @@ body {
 .comparison-column {
   min-width: 0;
   flex: 0 0 auto;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 .workspace-scroll {
   flex: 1 1 auto;
@@ -446,11 +446,9 @@ body {
 }
 .comparison-heading {
   display: flex;
-  flex-wrap: wrap;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 6px 16px;
-  margin-bottom: 13px;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 .comparison-heading h2 {
   font-size: 14px;
@@ -463,7 +461,7 @@ body {
 }
 .comparison-grid {
   container-type: inline-size;
-  --comparison-image-height: clamp(240px, 38vh, 380px);
+  --comparison-image-height: clamp(210px, 30vh, 340px);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
@@ -771,7 +769,7 @@ body {
 }
 @media (min-width: 1700px) {
   .studio {
-    padding: 24px 28px 36px;
+    padding: 16px 20px 24px;
   }
   .studio-grid {
     grid-template-columns: minmax(0, 1fr) 360px;
@@ -855,7 +853,7 @@ body {
     gap: 16px;
   }
   .comparison-grid {
-    --comparison-image-height: clamp(240px, 62cqw, 360px);
+    --comparison-image-height: clamp(210px, 60cqw, 360px);
     grid-template-columns: minmax(0, 1fr);
     gap: 13px;
   }

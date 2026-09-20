@@ -12,13 +12,13 @@
 
 .toolbar {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 94px;
-  padding: 11px 13px;
+  min-height: 48px;
+  padding: 6px 12px;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .heading,
@@ -217,14 +217,14 @@
 .emptyState h3 {
   margin: 0;
   color: var(--foreground);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 1.4;
   letter-spacing: -0.5px;
 }
 
 .emptyState p {
-  margin: 6px 0 13px;
+  margin: 4px 0 12px;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.75;
@@ -335,7 +335,7 @@
   gap: 13px;
   color: var(--accent);
   background: color-mix(in srgb, var(--background) 93%, transparent);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   pointer-events: none;
 }
@@ -399,6 +399,7 @@
 
 @media (max-width: 700px) {
   .toolbar {
+    flex-wrap: wrap;
     gap: 11px;
     padding: 13px;
   }
@@ -429,7 +430,7 @@
   }
 
   .emptyState h3 {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .desktopBreak {
