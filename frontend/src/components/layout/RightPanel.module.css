@@ -2,8 +2,8 @@
   width: 100%;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   display: flex;
-  flex-shrink: 0;
   flex-direction: column;
   overflow: hidden;
   border-radius: inherit;
