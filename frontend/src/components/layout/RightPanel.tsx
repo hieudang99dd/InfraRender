@@ -19,10 +19,12 @@ import {
   Tags,
   X,
 } from "lucide-react";
-import { type ReactNode, useId, useRef, useState } from "react";
+import { type ReactNode, useId, useRef, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 import SettingSection from "@/components/render/SettingSection";
 import OptionChip from "@/components/ui/OptionChip";
+import { QUICK_SETTINGS } from "@/lib/quick-settings";
 import {
   DEFAULT_SETTINGS,
   LIGHTING_VALUES,
@@ -176,82 +178,62 @@ function PreservationChoice({
   );
 }
 
-const QUICK_PRESETS = [
-  {
-    id: "hien_trang",
-    label: "Hiện trạng",
-    apply: (settings: RenderSettings): RenderSettings => ({
-      ...settings,
-      preserve_geometry: true,
-      preserve_road_markings: true,
-      camera: "preserve the original camera perspective",
-      creativity: 1,
-      style: "photorealistic visualization",
-    }),
-    matches: (settings: RenderSettings) =>
-      settings.preserve_geometry === true &&
-      settings.preserve_road_markings === true &&
-      settings.camera === "preserve the original camera perspective" &&
-      settings.creativity === 1 &&
-      settings.style === "photorealistic visualization",
-  },
-  {
-    id: "ban_ngay",
-    label: "Ban ngày",
-    apply: (settings: RenderSettings): RenderSettings => ({
-      ...settings,
-      weather: WEATHER_VALUES.sunny,
-      lighting: LIGHTING_VALUES.natural,
-      style: "photorealistic visualization",
-    }),
-    matches: (settings: RenderSettings) =>
-      settings.weather === WEATHER_VALUES.sunny &&
-      settings.lighting === LIGHTING_VALUES.natural &&
-      settings.style === "photorealistic visualization",
-  },
-  {
-    id: "hoang_hon",
-    label: "Hoàng hôn",
-    apply: (settings: RenderSettings): RenderSettings => ({
-      ...settings,
-      weather: WEATHER_VALUES.sunset,
-      lighting: LIGHTING_VALUES.golden,
-      style: "photorealistic visualization",
-    }),
-    matches: (settings: RenderSettings) =>
-      settings.weather === WEATHER_VALUES.sunset &&
-      settings.lighting === LIGHTING_VALUES.golden &&
-      settings.style === "photorealistic visualization",
-  },
-  {
-    id: "ban_dem",
-    label: "Ban đêm",
-    apply: (settings: RenderSettings): RenderSettings => ({
-      ...settings,
-      weather: WEATHER_VALUES.night,
-      lighting: LIGHTING_VALUES.night,
-      style: "photorealistic visualization",
-    }),
-    matches: (settings: RenderSettings) =>
-      settings.weather === WEATHER_VALUES.night &&
-      settings.lighting === LIGHTING_VALUES.night &&
-      settings.style === "photorealistic visualization",
-  },
-  {
-    id: "canh_quan",
-    label: "Cảnh quan đô thị",
-    apply: (settings: RenderSettings): RenderSettings => ({
-      ...settings,
-      vegetation: "urban landscape planting",
-      vegetation_density: "dense",
-      style: "photorealistic visualization",
-    }),
-    matches: (settings: RenderSettings) =>
-      settings.vegetation === "urban landscape planting" &&
-      settings.vegetation_density === "dense" &&
-      settings.style === "photorealistic visualization",
-  },
-];
+function QuickSettingTooltip({
+  setting,
+  currentSettings,
+  rect,
+}: {
+  setting: (typeof QUICK_SETTINGS)[0] | null;
+  currentSettings: RenderSettings;
+  rect: DOMRect | null;
+}) {
+  if (!setting || !rect) return null;
+
+  const items = setting.getPreview(currentSettings);
+  const isActive = setting.matches(currentSettings);
+  const isTop = rect.top > window.innerHeight / 2;
+
+  const style: React.CSSProperties = {
+    position: "fixed",
+    left: rect.left,
+    zIndex: 9999,
+    width: 240,
+    background: "var(--surface-3)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-md, 8px)",
+    padding: "12px",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+    pointerEvents: "none",
+  };
+
+  if (isTop) {
+    style.bottom = window.innerHeight - rect.top + 8;
+  } else {
+    style.top = rect.bottom + 8;
+  }
+
+  return createPortal(
+    <div style={style} id="quick-setting-preview" role="tooltip">
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+        {setting.label}{" "}
+        {isActive && (
+          <span style={{ color: "var(--accent)", fontWeight: "normal", fontSize: 11 }}>
+            (Đang áp dụng)
+          </span>
+        )}
+      </div>
+      <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5, marginBottom: 8 }}>
+        {setting.description}
+      </div>
+      <ul style={{ margin: 0, padding: 0, listStyle: "none", fontSize: 12, lineHeight: 1.6 }}>
+        {items.map((item, i) => (
+          <li key={i}>{item}</li>
+        ))}
+      </ul>
+    </div>,
+    document.body,
+  );
+}
 
 export default function RightPanel({
   settings,
@@ -262,6 +244,14 @@ export default function RightPanel({
 }: RightPanelProps) {
   const id = useId();
   const isBusy = isGenerating || isRendering;
+
+  const [hoveredPreset, setHoveredPreset] = useState<string | null>(null);
+  const [previewRect, setPreviewRect] = useState<DOMRect | null>(null);
+  const hoverTimer = useRef<NodeJS.Timeout>(null);
+  useEffect(() => {
+    return () => clearTimeout(hoverTimer.current!);
+  }, []);
+
   const [keywordDraft, setKeywordDraft] = useState("");
   const [keywordError, setKeywordError] = useState("");
   const keywordInput = useRef<HTMLInputElement>(null);
@@ -335,10 +325,10 @@ export default function RightPanel({
       <fieldset className={styles.settings} disabled={isBusy} aria-label="Thông số thiết kế">
         <div className={styles.quickPresets}>
           <p className={styles.presetLabel} id="quick-presets-label">
-            Thiết lập nhanh
+            Gợi ý thiết lập
           </p>
           <div className={styles.presetList}>
-            {QUICK_PRESETS.map((preset) => {
+            {QUICK_SETTINGS.map((preset) => {
               const isActive = preset.matches(settings);
               return (
                 <button
@@ -346,15 +336,41 @@ export default function RightPanel({
                   type="button"
                   className={`${styles.presetChip} ${isActive ? styles.active : ""}`}
                   aria-pressed={isActive}
+                  aria-describedby={
+                    hoveredPreset === preset.id ? "quick-setting-preview" : undefined
+                  }
                   disabled={isBusy}
                   onClick={() => onChange(preset.apply(settings))}
-                  title={`Áp dụng preset: ${preset.label}`}
+                  onMouseEnter={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    hoverTimer.current = setTimeout(() => {
+                      setHoveredPreset(preset.id);
+                      setPreviewRect(rect);
+                    }, 200);
+                  }}
+                  onMouseLeave={() => {
+                    clearTimeout(hoverTimer.current!);
+                    setHoveredPreset(null);
+                  }}
+                  onFocus={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setHoveredPreset(preset.id);
+                    setPreviewRect(rect);
+                  }}
+                  onBlur={() => {
+                    setHoveredPreset(null);
+                  }}
                 >
                   {preset.label}
                 </button>
               );
             })}
           </div>
+          <QuickSettingTooltip
+            setting={QUICK_SETTINGS.find((s) => s.id === hoveredPreset) || null}
+            currentSettings={settings}
+            rect={previewRect}
+          />
         </div>
         <p className={styles.selectionHint}>
           Chọn thông số hoặc thêm từ khóa riêng. Nhấn lại một lựa chọn để bỏ chọn.
