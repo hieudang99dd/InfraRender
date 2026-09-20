@@ -376,9 +376,10 @@ body {
   overflow: hidden;
 }
 .app {
-  height: 100%;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .workspace-fieldset {
   flex: 1;
@@ -421,7 +422,7 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden !important;
 }
 .comparison-column {
   min-width: 0;
