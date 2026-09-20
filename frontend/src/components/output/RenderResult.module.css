@@ -124,9 +124,9 @@
 
 .imageViewport {
   position: relative;
-  flex: 0 0 auto;
-  height: var(--comparison-image-height, 320px);
-  min-height: 0;
+  flex: 1;
+  min-height: var(--comparison-image-height, 320px);
+  height: auto;
   margin: 8px;
   overflow: hidden;
   background: var(--background);

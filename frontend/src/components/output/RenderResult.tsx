@@ -107,8 +107,8 @@ export default function RenderResult({
                 className={styles.iconButton}
                 onClick={() => void toggleFullscreen()}
                 disabled={!fullscreen && (!result || hasImageError)}
-                aria-label={fullscreen ? "Tho�t to�n m�n h�nh" : "Xem to�n m�n h�nh"}
-                title={fullscreen ? "Tho�t to�n m�n h�nh" : "Xem to�n m�n h�nh"}
+                aria-label={fullscreen ? "Thoát toàn màn hình" : "Xem toàn màn hình"}
+                title={fullscreen ? "Thoát toàn màn hình" : "Xem toàn màn hình"}
               >
                 {fullscreen ? (
                   <Minimize size={15} aria-hidden="true" />
@@ -144,8 +144,6 @@ export default function RenderResult({
           ) : null}
         </div>
       </div>
-
-      
 
       <div
         className={`${styles.imageViewport} ${!result ? styles.emptyViewport : ""}`}
