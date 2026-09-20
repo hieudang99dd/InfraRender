@@ -133,8 +133,8 @@ Backend có workflow riêng `backend-checks.yml` chạy `python -m unittest disc
 ## Xác minh sau triển khai
 
 - Mở URL Pages trên một thiết bị không chạy dịch vụ local; xác nhận CSS, JavaScript, icon và refresh dưới `/InfraRender/`.
-- Kiểm tra backend `/api/health`, origin CORS và phản hồi `401` khi thiếu token ở API thao tác.
-- Nhập token ứng dụng vào UI. Provider key không xuất hiện trong request browser, bundle hay log.
+- Kiểm tra backend `/api/health`, origin CORS và phản hồi `401` khi thiếu thông tin đăng nhập Basic ở API thao tác.
+- Nhập tài khoản/mật khẩu Basic vào UI. Provider key không xuất hiện trong request browser, bundle hay log.
 - Upload ảnh hợp lệ, tạo prompt `template`, rồi kiểm tra `refine`/`vision` bằng provider đã cấu hình.
 - Render thật; đối chiếu kích thước thực nhận, xử lý nội suy/cắt, xem ảnh và tải PNG.
 - Reload/mở lại dự án; kiểm tra tên, ảnh nguồn, prompt, thiết lập và lịch sử.

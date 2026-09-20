@@ -7,7 +7,11 @@ if [ ! -f .deploy-previous ]; then
 fi
 
 TAG="$(tr -d '[:space:]' < .deploy-previous)"
-if ! [[ "$TAG" =~ ^(latest|[0-9a-fA-F]{40})$ ]]; then
+if [ "$TAG" = "latest" ]; then
+  echo "Legacy latest rollback tags are no longer supported." >&2
+  exit 2
+fi
+if ! [[ "$TAG" =~ ^[0-9a-fA-F]{40}$ ]]; then
   echo "Recorded rollback tag is invalid: $TAG" >&2
   exit 2
 fi

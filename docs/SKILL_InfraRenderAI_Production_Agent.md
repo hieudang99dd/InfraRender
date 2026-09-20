@@ -471,7 +471,8 @@ Production mở rộng nên có:
 Chỉ triển khai khi sản phẩm thực sự cần:
 
 - PostgreSQL;
-- authentication;
+- multi-user authentication and authorization;
+- per-user project access and role-based access control;
 - project database;
 - multi-user;
 - object storage;
@@ -553,8 +554,7 @@ Trạng thái repository hiện tại:
 - deploy health verification: done;
 - rollback bằng image SHA: script hỗ trợ pin SHA; production deployment nên dùng SHA;
 - dependency pinning/update policy: done;
-- Trivy security scan: informational baseline, chưa phải blocking gate cho tới khi
-   CRITICAL fixable được xác minh sạch;
+- Trivy security scan: blocking gate cho CRITICAL fixable, giữ `ignore-unfixed: true`;
 - Docker SBOM/provenance: done;
 - Docker integration CI: workflow có compose/Caddy/local smoke; production HTTPS,
   backup/restore thật và provider trả phí chưa được chạy trong CI;
@@ -574,7 +574,7 @@ Các mục còn lại phụ thuộc hạ tầng bên ngoài repository:
 - production render smoke test bằng tài khoản OpenAI thật;
 - kiểm thử restore/rollback thực tế trên VPS.
 
-Các hạng mục scale-up như PostgreSQL, authentication, object storage, Redis,
+Các hạng mục scale-up như PostgreSQL, multi-user authorization, object storage, Redis,
 billing và Kubernetes không phải blocker của production v1.
 
 ---

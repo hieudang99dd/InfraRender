@@ -49,7 +49,7 @@ Xem [hướng dẫn phát triển](docs/development.md) để chạy riêng từ
 
 Mặc định dữ liệu nằm trong `backend/projects.sqlite3`, `backend/uploads/` và `backend/outputs/`. `INFRARENDER_DATA_DIR` chuyển cả ba vào thư mục khác; Docker dùng `/data` và cần volume bền vững. Ảnh còn được bất kỳ dự án nào tham chiếu được giữ lại. Ảnh không được tham chiếu và có tuổi file quá `INFRARENDER_RETENTION_DAYS` (mặc định 30) được xét dọn mỗi 24 giờ bởi chính backend (không có maintenance worker riêng).
 
-Bản triển khai dành cho một cá nhân hoặc nhóm tin cậy dùng chung kho dự án. Token ứng dụng bảo vệ API thao tác nhưng chưa có tài khoản hay phân quyền theo người dùng. URL ảnh có tên ngẫu nhiên vẫn đọc được công khai bởi người biết URL; đây không phải kho ảnh riêng tư theo tài khoản.
+Bản triển khai dành cho một cá nhân hoặc nhóm tin cậy dùng chung kho dự án. Thông tin đăng nhập Basic bảo vệ API thao tác nhưng chưa có tài khoản riêng hoặc phân quyền theo người dùng. URL ảnh có tên ngẫu nhiên vẫn đọc được công khai bởi người biết URL; đây không phải kho ảnh riêng tư theo tài khoản.
 
 ## Kiểm tra mã nguồn
 

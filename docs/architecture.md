@@ -42,7 +42,7 @@ Frontend là static export, gọi FastAPI trực tiếp, không phụ thuộc AP
 
 Ảnh được upload để có `saved_name` bền vững. Blob URL chỉ dùng xem tạm, không phải địa chỉ lưu lâu dài. Dự án được lưu qua API vào SQLite; browser giữ bản nháp để phục hồi thao tác chưa đồng bộ. `revision` của máy chủ kiểm tra xung đột. Khi nhận `409`, client giữ thay đổi cục bộ; người dùng có thể mở bản mới nhất hoặc lưu thành bản sao, không tự ghi đè.
 
-Token ứng dụng được giữ trong phiên trình duyệt theo backend URL, không phải provider key. Bản nháp local cũng được tách theo backend URL. Tự động lưu không gọi AI.
+Thông tin đăng nhập Basic được giữ trong phiên trình duyệt theo backend URL, không phải provider key. Bản nháp local cũng được tách theo backend URL. Tự động lưu không gọi AI.
 
 Lịch sử render lưu ảnh kết quả, prompt, thiết lập, thời điểm và ảnh gốc tương ứng. Khôi phục render cần khôi phục đúng cặp ảnh. Lịch sử prompt là tập riêng để lưu các bản biên tập chỉ dẫn.
 

@@ -128,9 +128,12 @@ ls -lh "$DEST_ABS"
 
 # Purge old backups beyond the retention window
 if [[ "$RETENTION_DAYS" =~ ^[0-9]+$ ]] && [ "$RETENTION_DAYS" -gt 0 ]; then
-  PRUNED=$(find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -mtime +"$RETENTION_DAYS" -print)
-  if [ -n "$PRUNED" ]; then
-    echo "$PRUNED" | xargs rm -rf
-    echo "Pruned $(echo "$PRUNED" | wc -l) old backup(s) older than ${RETENTION_DAYS} days."
+  pruned=0
+  while IFS= read -r -d '' backup; do
+    rm -rf -- "$backup"
+    pruned=$((pruned + 1))
+  done < <(find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -mtime +"$RETENTION_DAYS" -print0)
+  if [ "$pruned" -gt 0 ]; then
+    echo "Pruned $pruned old backup(s) older than ${RETENTION_DAYS} days."
   fi
 fi

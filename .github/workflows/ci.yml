@@ -16,6 +16,7 @@ jobs:
         run: |
           bash -n ops/*.sh
           shellcheck ops/*.sh
+          bash ops/check_contracts.sh
       - name: Scan repository for critical vulnerabilities, secrets and misconfiguration
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -25,7 +26,7 @@ jobs:
           scanners: vuln,secret,misconfig
           severity: CRITICAL
           ignore-unfixed: true
-          exit-code: "0"
+          exit-code: "1"
           format: table
 
   frontend:
@@ -97,30 +98,24 @@ jobs:
       - name: Build Docker images
         run: docker compose -f compose.yaml -f compose.local.yaml build
 
-      - name: Scan backend Docker image (informational baseline)
+      - name: Scan backend Docker image (blocking CRITICAL gate)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           version: v0.74.0
           image-ref: infrarender-backend:local
           severity: CRITICAL
           ignore-unfixed: true
-          # Informational until the CRITICAL-fixable baseline is verified as
-          # clean; see docs/PRODUCTION_READINESS.md. Do not describe this as a
-          # blocking gate while exit-code is 0.
-          exit-code: "0"
+          exit-code: "1"
           format: table
 
-      - name: Scan frontend Docker image (informational baseline)
+      - name: Scan frontend Docker image (blocking CRITICAL gate)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           version: v0.74.0
           image-ref: infrarender-frontend:local
           severity: CRITICAL
           ignore-unfixed: true
-          # Informational until the CRITICAL-fixable baseline is verified as
-          # clean; see docs/PRODUCTION_READINESS.md. Do not describe this as a
-          # blocking gate while exit-code is 0.
-          exit-code: "0"
+          exit-code: "1"
           format: table
 
       - name: Start Docker stack

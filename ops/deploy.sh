@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-bash ops/preflight.sh
-
 set -a
 # shellcheck disable=SC1091
 . ./.env
@@ -18,11 +16,12 @@ if [ -z "${INFRARENDER_DOMAIN:-}" ]; then
   exit 2
 fi
 
+export INFRARENDER_IMAGE_TAG="$TAG"
+bash ops/preflight.sh "$TAG"
+
 if [ -f .deploy-current ]; then
   cp .deploy-current .deploy-previous
 fi
-
-export INFRARENDER_IMAGE_TAG="$TAG"
 
 docker compose -f compose.deploy.yaml pull
 docker compose -f compose.deploy.yaml up -d --remove-orphans

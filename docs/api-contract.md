@@ -56,7 +56,7 @@ Lỗi ứng dụng thường có dạng `{"detail":"Thông báo tiếng Việt"}
 }
 ```
 
-`GET /api/render-status` trả riêng object `renderer`, không gọi provider. `POST /api/render-status/check` kiểm tra `/models/{model}` của provider, cần token ứng dụng nếu được cấu hình, không cần body và không tạo ảnh. Kết quả kiểm tra được trả qua `state`/`message`, kể cả khi HTTP là `200`.
+`GET /api/render-status` trả riêng object `renderer`, không gọi provider. `POST /api/render-status/check` kiểm tra `/models/{model}` của provider, cần thông tin đăng nhập Basic nếu backend bật bảo vệ, không cần body và không tạo ảnh. Kết quả kiểm tra được trả qua `state`/`message`, kể cả khi HTTP là `200`.
 
 `configured` chỉ phản ánh cấu hình. `connected` là truy cập được model, chưa chứng minh render. `rendered`/`ready=true` là đã tạo ảnh thành công. Trạng thái xác minh có TTL 300 giây trong process. Các trạng thái lỗi gồm `missing_key`, `invalid_config`, `unauthorized`, `model_unavailable`, `rate_limited`, `provider_error`, `timeout`; có cấu hình nhưng chưa xác minh là `unverified`.
 

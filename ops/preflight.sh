@@ -11,6 +11,12 @@ set -a
 . ./.env
 set +a
 
+TAG="${1:-${INFRARENDER_IMAGE_TAG:-}}"
+if ! [[ "$TAG" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  echo "ERROR: INFRARENDER_IMAGE_TAG must be a full 40-character Git SHA." >&2
+  exit 2
+fi
+
 required_vars=(
   INFRARENDER_DOMAIN
 )
@@ -70,6 +76,7 @@ if [ "$auth_secret_mode" != "600" ]; then
 fi
 
 INFRARENDER_DOMAIN="${INFRARENDER_DOMAIN}" \
+INFRARENDER_IMAGE_TAG="$TAG" \
 docker compose -f compose.deploy.yaml config >/dev/null
 
 echo "Production preflight passed."

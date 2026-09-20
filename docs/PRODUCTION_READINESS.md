@@ -13,11 +13,11 @@ readiness.
 | Next.js production build | PASS | CI `npm run build` |
 | Backend compile | PASS | CI `python -m compileall` |
 | Backend tests | PASS | CI unittest suite |
-| Docker frontend image | UNVERIFIED | Requires current CI Docker job |
-| Docker backend image | UNVERIFIED | Requires current CI Docker job |
-| Docker Compose local | UNVERIFIED | Requires current CI Docker job |
-| Docker Compose production | UNVERIFIED | Requires current CI Docker job |
-| Self-host Caddy routing | UNVERIFIED | Requires current CI `compose.test.yaml` smoke |
+| Docker frontend image | PASS | CI Docker job: build, scan and runtime smoke |
+| Docker backend image | PASS | CI Docker job: build, scan and runtime smoke |
+| Docker Compose local | PASS | CI config + runtime smoke |
+| Docker Compose production | PASS | CI production config validation |
+| Self-host Caddy routing | PASS | CI Caddy integration smoke and media roundtrip |
 | Persistent volumes | READY | stable named volumes |
 | Docker secret support | READY | `OPENAI_API_KEY_FILE` + `INFRARENDER_AUTH_PASS_FILE` |
 | HTTPS reverse proxy | READY | pinned Caddy + validated Caddyfile |
@@ -27,7 +27,7 @@ readiness.
 | Log rotation | READY | Docker json-file limits |
 | Resource limits | READY | Compose environment controls |
 | File retention | READY | backend lifecycle retention sweep (24h, `INFRARENDER_RETENTION_DAYS`) |
-| Vulnerability/secret scan | INFORMATIONAL (not gating) | Trivy scans run with `exit-code: 0`; CRITICAL-fixable baseline not yet verified green |
+| Vulnerability/secret scan | PASS (blocking CRITICAL gate) | Trivy filesystem and image scans use `exit-code: 1`, `ignore-unfixed: true` |
 | Dependency updates | READY | Dependabot |
 | Container SBOM/provenance | READY | GHCR publish workflow |
 | Immutable deployment tags | READY | full Git SHA tags |
@@ -36,6 +36,7 @@ readiness.
 | Volume backup | READY | `ops/backup.sh` |
 | Backup integrity | READY | SHA-256 manifest |
 | Volume restore | READY | `ops/restore.sh` |
+| Backup/restore smoke | PASS | CI disposable recovery smoke |
 | Scheduled backup config | READY | systemd service/timer |
 | Health/disk monitoring config | READY | systemd service/timer |
 | Production deployment workflow | READY | guarded manual GitHub Action |
@@ -88,7 +89,8 @@ The following are not v1 production blockers and should be introduced only when
 product requirements justify them:
 
 - PostgreSQL;
-- authentication;
+- multi-user authentication and authorization;
+- per-user project access and role-based access control;
 - multi-user project storage;
 - S3/R2 object storage;
 - Redis;
