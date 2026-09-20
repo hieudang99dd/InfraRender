@@ -428,7 +428,6 @@ body {
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
-  grid-template-rows: repeat(3, minmax(0, 1fr));
   align-items: stretch;
   gap: 20px;
   width: 100%;
@@ -474,8 +473,9 @@ body {
 .settings-column {
   grid-column: 2;
   grid-row: 1 / span 3;
-  height: 100%;
+  height: calc(100dvh - var(--header-height) - var(--workflow-bar-height) - 56px);
   min-height: 0;
+  align-self: start;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 13px;
