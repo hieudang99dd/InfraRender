@@ -93,49 +93,51 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="prompt-column" id="prompt">
-                  <PromptDock
-                    promptMode={workspace.promptMode}
-                    onPromptModeChange={workspace.setPromptMode}
-                    analysis={workspace.promptAnalysis}
-                    model={workspace.promptModel}
-                    prompt={workspace.prompt}
-                    onPromptChange={workspace.setPrompt}
-                    negativePrompt={workspace.negativePrompt}
-                    onNegativePromptChange={workspace.setNegativePrompt}
-                    notes={workspace.notes}
-                    onNotesChange={workspace.setNotes}
-                    onGenerate={workspace.generatePrompt}
-                    onSave={workspace.saveVersion}
-                    onClear={workspace.clearPrompt}
-                    isGenerating={workspace.isGenerating}
-                    isRendering={workspace.isRendering}
-                    canGenerate={
-                      Boolean(workspace.source && "saved_name" in workspace.source) &&
-                      !workspace.isUploading
-                    }
-                    isStale={workspace.isStale}
-                    error={workspace.error}
-                    notice={workspace.notice}
-                  />
-                </div>
-
-                {(workspace.versions.length > 0 || workspace.renderVersions.length > 0) && (
-                  <div className="history-column" id="versions">
-                    <OutputHistory
-                      versions={workspace.versions}
-                      renderVersions={workspace.renderVersions}
-                      activeVersion={workspace.activeVersion}
-                      onRestore={workspace.restoreVersion}
-                      onToggleFavorite={workspace.toggleFavorite}
-                      onDelete={workspace.deleteVersion}
-                      onDeleteRender={workspace.deleteRenderVersion}
-                      onRestoreRender={workspace.restoreRenderVersion}
-                      onDownloadRender={(version) => void workspace.downloadImage(version)}
-                      activeRenderId={workspace.activeRenderId}
+                <div className="workspace-scroll">
+                  <div className="prompt-column" id="prompt">
+                    <PromptDock
+                      promptMode={workspace.promptMode}
+                      onPromptModeChange={workspace.setPromptMode}
+                      analysis={workspace.promptAnalysis}
+                      model={workspace.promptModel}
+                      prompt={workspace.prompt}
+                      onPromptChange={workspace.setPrompt}
+                      negativePrompt={workspace.negativePrompt}
+                      onNegativePromptChange={workspace.setNegativePrompt}
+                      notes={workspace.notes}
+                      onNotesChange={workspace.setNotes}
+                      onGenerate={workspace.generatePrompt}
+                      onSave={workspace.saveVersion}
+                      onClear={workspace.clearPrompt}
+                      isGenerating={workspace.isGenerating}
+                      isRendering={workspace.isRendering}
+                      canGenerate={
+                        Boolean(workspace.source && "saved_name" in workspace.source) &&
+                        !workspace.isUploading
+                      }
+                      isStale={workspace.isStale}
+                      error={workspace.error}
+                      notice={workspace.notice}
                     />
                   </div>
-                )}
+
+                  {(workspace.versions.length > 0 || workspace.renderVersions.length > 0) && (
+                    <div className="history-column" id="versions">
+                      <OutputHistory
+                        versions={workspace.versions}
+                        renderVersions={workspace.renderVersions}
+                        activeVersion={workspace.activeVersion}
+                        onRestore={workspace.restoreVersion}
+                        onToggleFavorite={workspace.toggleFavorite}
+                        onDelete={workspace.deleteVersion}
+                        onDeleteRender={workspace.deleteRenderVersion}
+                        onRestoreRender={workspace.restoreRenderVersion}
+                        onDownloadRender={(version) => void workspace.downloadImage(version)}
+                        activeRenderId={workspace.activeRenderId}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="settings-column" id="settings">

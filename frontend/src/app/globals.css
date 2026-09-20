@@ -419,14 +419,25 @@ body {
   min-width: 0;
   min-height: 0;
   height: 100%;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.comparison-column {
+  min-width: 0;
+  flex: 0 0 auto;
+  margin-bottom: 20px;
+}
+.workspace-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
-.comparison-column,
 .prompt-column,
 .history-column {
   min-width: 0;
@@ -451,7 +462,7 @@ body {
 }
 .comparison-grid {
   container-type: inline-size;
-  --comparison-image-height: clamp(220px, 32cqw, 380px);
+  --comparison-image-height: clamp(240px, 38vh, 380px);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
@@ -767,25 +778,6 @@ body {
   }
 }
 @media (max-width: 1250px) {
-  .brand {
-    min-width: 168px;
-  }
-  .studio {
-    padding: 22px;
-  }
-  .studio-grid {
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 16px;
-  }
-
-  .prompt-content {
-    padding: 16px;
-  }
-  .panel-heading {
-    padding-inline: 16px;
-  }
-}
-@media (max-width: 1050px) {
   html,
   body {
     height: auto;
@@ -821,13 +813,11 @@ body {
     min-height: 0;
     overflow: visible;
   }
-  .prompt-column {
+  .workspace-scroll {
     grid-row: 3;
     grid-column: 1;
-  }
-  .history-column {
-    grid-row: 4;
-    grid-column: 1;
+    height: auto;
+    overflow: visible;
   }
 
   .brand-name {
